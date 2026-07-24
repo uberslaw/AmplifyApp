@@ -1,9 +1,7 @@
 import { gatePulseScale, type Gate } from './gates'
 import type { Player } from './player'
 import { GATE_HOLE_SCALE, pathGateShape } from './shapes'
-
-/** ROYGBIV order — outer band red → inner violet. */
-const RAINBOW = ['#ff3b3b', '#ff8a1f', '#ffd84a', '#3dce6a', '#3aa0ff', '#7b5cff', '#e048c7']
+import { shade, SPECTRUM } from './spectrum'
 
 /** Foreshorten X so geometric gates read as side-on portals you fly through. */
 const SIDE_SCALE_X = 0.32
@@ -160,14 +158,18 @@ function drawRainbowRim(
   pathGateShape(ctx, gate.shape, openHalf * HOLE_SCALE, openHalfW * HOLE_SCALE, false)
   ctx.fill('evenodd')
 
-  const bands = RAINBOW.length
+  // Single spectrum colour per gate (shades of that colour for rim depth)
+  const base = SPECTRUM[gate.color % SPECTRUM.length]!.hex
+  const shades = [shade(base, 40), base, shade(base, -35), shade(base, -70)]
+  const bands = shades.length
   for (let i = 0; i < bands; i++) {
     const t = i / (bands - 1)
     const scale = 1 - t * (1 - HOLE_SCALE) * 0.92
-    ctx.strokeStyle = RAINBOW[i]!
-    ctx.lineWidth = Math.max(2.2, thick / bands + 1.5)
-    ctx.shadowColor = RAINBOW[i]!
-    ctx.shadowBlur = gate.cleared ? 16 : 7
+    const col = shades[i]!
+    ctx.strokeStyle = col
+    ctx.lineWidth = Math.max(2.4, thick / bands + 1.8)
+    ctx.shadowColor = base
+    ctx.shadowBlur = gate.cleared ? 16 : 8
     ctx.globalAlpha = alpha * (gate.pattern === 'dashed' && i % 2 === 1 ? 0.35 : 1)
 
     if (gate.pattern === 'striped') {

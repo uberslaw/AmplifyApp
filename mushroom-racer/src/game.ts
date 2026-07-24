@@ -3,24 +3,28 @@ import { testGateCrossing } from './collision'
 import { GateManager } from './gates'
 import { Input } from './input'
 import { drawMeteors, MeteorManager } from './meteors'
-import { drawNyanCats, drawNyanPowerAura, NyanManager } from './nyan'
+import { drawChaseNyan, NYAN_CATCH_SPECTRA, NyanChase } from './nyan'
 import { Player } from './player'
 import { drawFlash, drawGates, drawPlayer } from './render'
+import { SPECTRUM, SpectrumTracker } from './spectrum'
 import { drawStarfield, makeStarfield, type Starfield } from './starfield'
 
-export type GameMode = 'title' | 'playing' | 'paused' | 'gameover'
+export type GameMode = 'title' | 'playing' | 'paused' | 'gameover' | 'won'
 
 const BEST_KEY = 'mushroom-blaze-best'
+const MAX_MISSES = 3
 
 export class Game {
   mode: GameMode = 'title'
   score = 0
   distance = 0
   best = 0
+  misses = 0
 
   private player = new Player()
   private gates = new GateManager()
-  private nyan = new NyanManager()
+  private chase = new NyanChase()
+  private spectrum = new SpectrumTracker()
   private meteors = new MeteorManager()
   private audio = new AudioBus()
   private starfield: Starfield | null = null
@@ -32,6 +36,7 @@ export class Game {
   private thrustSoundT = 0
   private w = 800
   private h = 450
+  private overReason = 'Crashed!'
 
   private els: {
     title: HTMLElement
@@ -39,13 +44,16 @@ export class Game {
     pause: HTMLElement
     nyanBanner: HTMLElement
     over: HTMLElement
+    overTitle: HTMLElement
     score: HTMLElement
     distance: HTMLElement
-    powerLabel: HTMLElement
-    power: HTMLElement
     best: HTMLElement
     finalScore: HTMLElement
     finalBest: HTMLElement
+    spectrumRow: HTMLElement
+    misses: HTMLElement
+    spectra: HTMLElement
+    gap: HTMLElement
   }
 
   private ctx: CanvasRenderingContext2D
@@ -61,14 +69,18 @@ export class Game {
       pause: must('#pause-banner'),
       nyanBanner: must('#nyan-banner'),
       over: must('#game-over'),
+      overTitle: must('#over-title'),
       score: must('#score'),
       distance: must('#distance'),
-      powerLabel: must('#power-label'),
-      power: must('#power'),
       best: must('#best'),
       finalScore: must('#final-score'),
       finalBest: must('#final-best'),
+      spectrumRow: must('#spectrum-row'),
+      misses: must('#misses'),
+      spectra: must('#spectra'),
+      gap: must('#nyan-gap'),
     }
+    this.buildSpectrumHud()
     must('#play-btn').addEventListener('click', () => this.start())
     must('#restart-btn').addEventListener('click', () => this.start())
     this.syncUi()
@@ -89,14 +101,17 @@ export class Game {
     this.mode = 'playing'
     this.score = 0
     this.distance = 0
+    this.misses = 0
     this.scroll = 0
     this.scrollSpeed = 220
     this.flash = 0
     this.crashShake = 0
+    this.overReason = 'Crashed!'
     this.player.reset(this.h)
     this.player.x = Math.min(200, this.w * 0.22)
     this.gates.reset(this.w)
-    this.nyan.reset()
+    this.spectrum.reset()
+    this.chase.reset(this.h)
     this.meteors.reset()
     this.syncUi()
   }
@@ -106,13 +121,13 @@ export class Game {
       if (this.input.state.playPressed) this.start()
       this.player.update(dt, Math.sin(performance.now() * 0.0015) * 0.25, true, this.h)
       this.scroll += 60 * dt
-      this.meteors.update(dt * 0.45, this.w, this.h, 200)
+      this.meteors.update(dt * 0.35, this.w, this.h, 120)
       this.draw()
       this.input.endFrame()
       return
     }
 
-    if (this.mode === 'gameover') {
+    if (this.mode === 'gameover' || this.mode === 'won') {
       if (this.input.state.playPressed) this.start()
       this.crashShake = Math.max(0, this.crashShake - dt)
       this.flash = Math.max(0, this.flash - dt)
@@ -128,19 +143,19 @@ export class Game {
 
     if (this.mode === 'paused') {
       this.draw()
-      this.syncNyanBanner()
+      this.syncBanners()
       this.input.endFrame()
       return
     }
 
-    const difficulty = Math.min(1, this.distance / 2800)
-    const nyanPower = this.nyan.powerSecondsLeft > 0
+    this.spectrum.tick(dt)
+
+    const boost = this.input.state.boost
     this.scrollSpeed =
-      220 + difficulty * 180 + (this.player.boosting || nyanPower ? 90 : 0) + (nyanPower ? 40 : 0)
+      210 + this.spectrum.speedBonus + (boost ? 70 : 0) + Math.min(80, this.distance / 40)
 
     const steer = this.input.getSteer()
-    const boost = this.input.state.boost
-    this.player.update(dt, steer, boost, this.h, nyanPower)
+    this.player.update(dt, steer, boost, this.h, this.spectrum.cycles > 0)
 
     this.player.x = Math.min(200, this.w * 0.22)
     const scrollDelta = this.scrollSpeed * dt
@@ -151,41 +166,52 @@ export class Game {
     this.meteors.update(dt, this.w, this.h, this.distance)
 
     const hb = this.player.hitbox()
-    const { caught } = this.nyan.update(dt, this.scrollSpeed, this.w, this.h, this.distance, hb)
+    const caught = this.chase.update(
+      dt,
+      this.scrollSpeed,
+      hb,
+      this.w,
+      this.h,
+      this.spectrum.cycles,
+    )
     if (caught) {
-      this.score += caught.points
-      this.flash = 0.28
-      this.flashColor = 'rgba(180, 220, 255, 1)'
-      this.audio.nyanCatch(caught.kind === 'boss')
+      this.score += 5000 + this.spectrum.cycles * 1000
+      this.audio.nyanCatch(true)
+      this.win()
+      this.draw()
+      this.input.endFrame()
+      return
     }
 
     if (this.meteors.hitsPlayer(hb)) {
-      if (this.nyan.isInvulnerable) {
-        this.flash = 0.1
-        this.flashColor = 'rgba(120, 220, 255, 0.7)'
-      } else {
-        this.die()
-        this.draw()
-        this.input.endFrame()
-        return
-      }
+      this.overReason = 'Meteor strike!'
+      this.die()
+      this.draw()
+      this.input.endFrame()
+      return
     }
 
-    const mult = this.nyan.scoreMultiplier
     for (const gate of this.gates.gates) {
       const result = testGateCrossing(hb, gate, scrollDelta)
       if (result.kind === 'clear') {
         gate.cleared = true
-        this.score += Math.floor(gate.points * mult)
-        this.flash = 0.22
-        this.flashColor = 'rgba(255, 220, 120, 1)'
-        this.audio.gateClear()
+        const { isNew, fullSpectrum } = this.spectrum.collect(gate.color)
+        this.score += gate.points + (isNew ? 50 : 0) + (fullSpectrum ? 500 : 0)
+        this.flash = fullSpectrum ? 0.35 : 0.18
+        this.flashColor = SPECTRUM[gate.color]!.hex
+        if (fullSpectrum) {
+          this.audio.nyanCatch(false)
+        } else {
+          this.audio.gateClear()
+        }
       } else if (result.kind === 'hit' || result.kind === 'miss') {
         gate.missed = true
-        if (this.nyan.isInvulnerable) {
-          this.flash = 0.12
-          this.flashColor = 'rgba(120, 220, 255, 0.8)'
-        } else {
+        this.misses += 1
+        this.flash = 0.2
+        this.flashColor = 'rgba(255, 80, 60, 0.9)'
+        this.audio.crash()
+        if (this.misses >= MAX_MISSES) {
+          this.overReason = 'Too many missed gates!'
           this.die()
           break
         }
@@ -193,7 +219,7 @@ export class Game {
     }
 
     this.thrustSoundT -= dt
-    if ((boost || nyanPower) && this.thrustSoundT <= 0) {
+    if (boost && this.thrustSoundT <= 0) {
       this.audio.boost()
       this.thrustSoundT = 0.18
     } else if (this.thrustSoundT <= 0) {
@@ -204,8 +230,20 @@ export class Game {
     this.flash = Math.max(0, this.flash - dt)
     this.draw()
     this.syncHud()
-    this.syncNyanBanner()
+    this.syncBanners()
     this.input.endFrame()
+  }
+
+  private win(): void {
+    this.mode = 'won'
+    this.overReason = 'Caught Nyan Cat!'
+    this.flash = 0.5
+    this.flashColor = 'rgba(255, 200, 255, 1)'
+    if (this.score > this.best) {
+      this.best = this.score
+      localStorage.setItem(BEST_KEY, String(this.best))
+    }
+    this.syncUi()
   }
 
   private die(): void {
@@ -233,22 +271,34 @@ export class Game {
     drawStarfield(ctx, this.w, this.h, this.starfield, this.scroll, this.player.cameraBob)
     drawGates(ctx, this.gates.gates)
     drawMeteors(ctx, this.meteors.meteors)
-    drawNyanCats(ctx, this.nyan.cats)
-    drawNyanPowerAura(ctx, this.player.x, this.player.y, this.nyan.powerSecondsLeft > 0)
+    drawChaseNyan(ctx, this.chase, this.player.x, this.w)
     drawPlayer(ctx, this.player)
     drawFlash(ctx, this.w, this.h, this.flash, this.flashColor)
 
     ctx.restore()
   }
 
+  private buildSpectrumHud(): void {
+    this.els.spectrumRow.innerHTML = ''
+    for (let i = 0; i < SPECTRUM.length; i++) {
+      const d = document.createElement('span')
+      d.className = 'spec-dot'
+      d.dataset.color = String(i)
+      d.style.setProperty('--c', SPECTRUM[i]!.hex)
+      d.title = SPECTRUM[i]!.name
+      this.els.spectrumRow.appendChild(d)
+    }
+  }
+
   private syncUi(): void {
     this.els.title.classList.toggle('hidden', this.mode !== 'title')
-    this.els.over.classList.toggle('hidden', this.mode !== 'gameover')
+    this.els.over.classList.toggle('hidden', this.mode !== 'gameover' && this.mode !== 'won')
     this.els.hud.classList.toggle('hidden', this.mode !== 'playing' && this.mode !== 'paused')
     this.els.pause.classList.toggle('hidden', this.mode !== 'paused')
+    this.els.overTitle.textContent = this.overReason
     this.syncHud()
-    this.syncNyanBanner()
-    if (this.mode === 'gameover') {
+    this.syncBanners()
+    if (this.mode === 'gameover' || this.mode === 'won') {
       this.els.finalScore.textContent = String(this.score)
       this.els.finalBest.textContent = String(this.best)
     }
@@ -258,15 +308,17 @@ export class Game {
     this.els.score.textContent = String(this.score)
     this.els.distance.textContent = String(Math.floor(this.distance))
     this.els.best.textContent = String(this.best)
-    const left = this.nyan.powerSecondsLeft
-    this.els.powerLabel.classList.toggle('hidden', left <= 0)
-    if (left > 0) {
-      this.els.power.textContent = left.toFixed(1)
-    }
+    this.els.misses.textContent = `${this.misses}/${MAX_MISSES}`
+    this.els.spectra.textContent = `${this.spectrum.cycles}/${NYAN_CATCH_SPECTRA}`
+    this.els.gap.textContent = `${Math.floor(this.chase.nyan.gap)}m`
+    const dots = this.els.spectrumRow.querySelectorAll<HTMLElement>('.spec-dot')
+    dots.forEach((d, i) => {
+      d.classList.toggle('on', this.spectrum.has(i))
+    })
   }
 
-  private syncNyanBanner(): void {
-    const text = this.nyan.banner
+  private syncBanners(): void {
+    const text = this.spectrum.banner ?? this.chase.banner
     this.els.nyanBanner.classList.toggle('hidden', !text)
     if (text) this.els.nyanBanner.textContent = text
   }

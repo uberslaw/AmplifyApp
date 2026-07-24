@@ -1,167 +1,150 @@
-const RAINBOW = ['#ff3b3b', '#ff8a1f', '#ffd84a', '#3dce6a', '#3aa0ff', '#7b5cff', '#e048c7']
+import { SPECTRUM } from './spectrum'
 
-export type NyanKind = 'power' | 'boss'
-
-export type NyanCat = {
-  kind: NyanKind
-  x: number
+export type ChaseNyan = {
+  /** Distance ahead of the player along the course (world gap). */
+  gap: number
   y: number
   baseY: number
-  vx: number
   phase: number
   amp: number
-  scale: number
   radius: number
-  caught: boolean
-  points: number
-  powerSeconds: number
-  /** Trail samples for rainbow streamer behind the cat. */
+  /** Nyan's own cruise speed on rainbow power — usually faster than base player. */
+  cruiseSpeed: number
   trail: { x: number; y: number }[]
+  caught: boolean
 }
 
-export class NyanManager {
-  cats: NyanCat[] = []
-  private spawnCooldown = 8
-  private bossCooldown = 45
-  private powerActive = 0
-  private multiplier = 1
-  private invulnerable = false
+/** Spectra completions before Nyan can be caught when in range. */
+export const NYAN_CATCH_SPECTRA = 3
+
+export class NyanChase {
+  nyan: ChaseNyan
   private announce = 0
   private announceText = ''
+  private catchFlash = 0
 
-  reset(): void {
-    this.cats = []
-    this.spawnCooldown = 6 + Math.random() * 4
-    this.bossCooldown = 35 + Math.random() * 15
-    this.powerActive = 0
-    this.multiplier = 1
-    this.invulnerable = false
-    this.announce = 0
-    this.announceText = ''
+  constructor() {
+    this.nyan = this.fresh()
   }
 
-  get powerSecondsLeft(): number {
-    return this.powerActive
-  }
-
-  get scoreMultiplier(): number {
-    return this.multiplier
-  }
-
-  get isInvulnerable(): boolean {
-    return this.invulnerable
+  reset(viewH: number): void {
+    this.nyan = this.fresh(viewH)
+    this.announce = 2.4
+    this.announceText = 'CHASE NYAN CAT!'
+    this.catchFlash = 0
   }
 
   get banner(): string | null {
     return this.announce > 0 ? this.announceText : null
   }
 
+  get isCaught(): boolean {
+    return this.nyan.caught
+  }
+
+  /**
+   * @param playerSpeed current scroll / chase speed
+   * @param spectraCompleted full spectrum cycles so far
+   * @returns whether Nyan was just caught
+   */
   update(
     dt: number,
-    scrollSpeed: number,
+    playerSpeed: number,
+    player: { x: number; y: number; r: number },
     viewW: number,
     viewH: number,
-    distance: number,
-    player: { x: number; y: number; r: number },
-  ): { caught: NyanCat | null } {
-    this.powerActive = Math.max(0, this.powerActive - dt)
-    if (this.powerActive <= 0) {
-      this.multiplier = 1
-      this.invulnerable = false
-    }
+    spectraCompleted: number,
+  ): boolean {
     this.announce = Math.max(0, this.announce - dt)
+    this.catchFlash = Math.max(0, this.catchFlash - dt)
+    if (this.nyan.caught) return false
 
-    this.spawnCooldown -= dt
-    this.bossCooldown -= dt
+    const n = this.nyan
+    n.phase += dt * 2.4
+    n.baseY = viewH * 0.42
+    n.amp = viewH * 0.16
+    n.y = n.baseY + Math.sin(n.phase) * n.amp
+    n.y = Math.max(50, Math.min(viewH - 50, n.y))
 
-    if (this.spawnCooldown <= 0 && this.cats.length < 2) {
-      this.cats.push(this.makeCat('power', viewW, viewH, scrollSpeed))
-      this.spawnCooldown = 12 + Math.random() * 10 - Math.min(4, distance / 1200)
+    // Relative motion: Nyan pulls ahead at cruiseSpeed; player closes with speed
+    const closing = playerSpeed - n.cruiseSpeed
+    n.gap -= closing * dt
+    // Soft floor so they don't warp behind instantly; can close to catch range
+    n.gap = Math.max(40, n.gap)
+
+    const screenX = player.x + n.gap
+    n.trail.unshift({ x: screenX, y: n.y })
+    if (n.trail.length > 36) n.trail.length = 36
+
+    const onScreen = n.gap < viewW - 40
+    const closeEnough = n.gap < player.r + n.radius + 28
+    const dy = Math.abs(n.y - player.y)
+    const canCatch = spectraCompleted >= NYAN_CATCH_SPECTRA && onScreen && closeEnough && dy < 55
+
+    if (canCatch) {
+      n.caught = true
+      this.announce = 2.5
+      this.announceText = 'CAUGHT NYAN!'
+      this.catchFlash = 0.5
+      return true
     }
 
-    if (distance > 400 && this.bossCooldown <= 0 && !this.cats.some((c) => c.kind === 'boss')) {
-      this.cats.push(this.makeCat('boss', viewW, viewH, scrollSpeed))
-      this.announce = 2.2
-      this.announceText = 'NYAN BOSS!'
-      this.bossCooldown = 50 + Math.random() * 25
-    }
-
-    let caught: NyanCat | null = null
-
-    for (const cat of this.cats) {
-      cat.phase += dt * (cat.kind === 'boss' ? 3.2 : 2.2)
-      cat.x -= (scrollSpeed * 0.35 + cat.vx) * dt
-      const wave =
-        cat.kind === 'boss'
-          ? Math.sin(cat.phase) * cat.amp + Math.sin(cat.phase * 2.4) * cat.amp * 0.35
-          : Math.sin(cat.phase) * cat.amp
-      cat.y = cat.baseY + wave
-      cat.y = Math.max(40, Math.min(viewH - 40, cat.y))
-
-      cat.trail.unshift({ x: cat.x, y: cat.y })
-      if (cat.trail.length > (cat.kind === 'boss' ? 28 : 18)) {
-        cat.trail.length = cat.kind === 'boss' ? 28 : 18
-      }
-
-      if (!cat.caught) {
-        const dx = cat.x - player.x
-        const dy = cat.y - player.y
-        const reach = cat.radius + player.r
-        if (dx * dx + dy * dy <= reach * reach) {
-          cat.caught = true
-          caught = cat
-          this.applyCatch(cat)
-        }
+    if (onScreen && spectraCompleted < NYAN_CATCH_SPECTRA && n.gap < viewW * 0.55) {
+      // Tease: visible but not yet catchable
+      if (this.announce <= 0 && Math.random() < 0.002) {
+        this.announce = 1.2
+        this.announceText = `NEED ${NYAN_CATCH_SPECTRA - spectraCompleted} MORE SPECTRUM`
       }
     }
 
-    this.cats = this.cats.filter((c) => c.x > -160 && !c.caught)
-    return { caught }
+    return false
   }
 
-  private applyCatch(cat: NyanCat): void {
-    this.powerActive = Math.max(this.powerActive, cat.powerSeconds)
-    this.multiplier = cat.kind === 'boss' ? 3 : 2
-    this.invulnerable = true
-    this.announce = 1.6
-    this.announceText = cat.kind === 'boss' ? 'BOSS CATCH! ×3' : 'NYAN POWER! ×2'
+  /** Screen-space X for drawing (relative to fixed player). */
+  screenX(playerX: number): number {
+    return playerX + this.nyan.gap
   }
 
-  private makeCat(kind: NyanKind, viewW: number, viewH: number, scrollSpeed: number): NyanCat {
-    const boss = kind === 'boss'
+  private fresh(viewH = 450): ChaseNyan {
     return {
-      kind,
-      x: viewW + 80,
-      y: viewH * 0.5,
-      baseY: viewH * (0.25 + Math.random() * 0.5),
-      vx: (boss ? 90 : 140) + scrollSpeed * 0.15,
-      phase: Math.random() * Math.PI * 2,
-      amp: boss ? viewH * 0.22 : viewH * 0.14,
-      scale: boss ? 1.55 : 1,
-      radius: boss ? 34 : 22,
-      caught: false,
-      points: boss ? 1500 : 400,
-      powerSeconds: boss ? 10 : 6,
+      gap: 4200,
+      y: viewH * 0.45,
+      baseY: viewH * 0.45,
+      phase: 0,
+      amp: 60,
+      radius: 28,
+      cruiseSpeed: 305,
       trail: [],
+      caught: false,
     }
   }
 }
 
-export function drawNyanCats(ctx: CanvasRenderingContext2D, cats: NyanCat[]): void {
-  for (const cat of cats) {
-    drawNyan(ctx, cat)
+export function drawChaseNyan(
+  ctx: CanvasRenderingContext2D,
+  chase: NyanChase,
+  playerX: number,
+  viewW: number,
+): void {
+  const n = chase.nyan
+  const x = chase.screenX(playerX)
+  if (x < -120 || x > viewW + 80) {
+    // Off-screen marker on the right edge
+    if (n.gap > viewW) {
+      drawOffscreenMarker(ctx, viewW, n.y, n.gap)
+    }
+    return
   }
-}
 
-function drawNyan(ctx: CanvasRenderingContext2D, cat: NyanCat): void {
-  // Rainbow trail
-  for (let i = cat.trail.length - 1; i >= 1; i--) {
-    const a = cat.trail[i]!
-    const b = cat.trail[i - 1]!
-    const t = i / cat.trail.length
-    ctx.strokeStyle = RAINBOW[i % RAINBOW.length]!
-    ctx.globalAlpha = 0.35 + (1 - t) * 0.45
-    ctx.lineWidth = (10 + (1 - t) * 10) * cat.scale
+  // Full rainbow streamer behind Nyan (its own rainbow power)
+  for (let i = n.trail.length - 1; i >= 1; i--) {
+    const a = n.trail[i]!
+    const b = n.trail[i - 1]!
+    if (a.x > viewW + 40 && b.x > viewW + 40) continue
+    const t = i / n.trail.length
+    ctx.strokeStyle = SPECTRUM[i % SPECTRUM.length]!.hex
+    ctx.globalAlpha = 0.4 + (1 - t) * 0.5
+    ctx.lineWidth = 12 + (1 - t) * 10
     ctx.lineCap = 'round'
     ctx.beginPath()
     ctx.moveTo(a.x, a.y)
@@ -171,87 +154,68 @@ function drawNyan(ctx: CanvasRenderingContext2D, cat: NyanCat): void {
   ctx.globalAlpha = 1
 
   ctx.save()
-  ctx.translate(cat.x, cat.y)
-  ctx.scale(cat.scale, cat.scale)
+  ctx.translate(x, n.y)
+  const hop = Math.sin(performance.now() * 0.02) > 0 ? 1 : -1
 
-  // Pop-tart body
+  // Pop-tart
   ctx.fillStyle = '#ffb6c9'
-  roundRectFill(ctx, -16, -10, 28, 20, 3)
+  roundRectFill(ctx, -18, -12, 32, 22, 3)
   ctx.fillStyle = '#f4a0b8'
   for (let i = 0; i < 6; i++) {
     ctx.beginPath()
-    ctx.arc(-10 + (i % 3) * 8, -4 + Math.floor(i / 3) * 8, 1.6, 0, Math.PI * 2)
+    ctx.arc(-12 + (i % 3) * 9, -5 + Math.floor(i / 3) * 9, 1.8, 0, Math.PI * 2)
     ctx.fill()
   }
 
-  // Cat head
+  // Cat
   ctx.fillStyle = '#9aa0a6'
   ctx.beginPath()
-  ctx.ellipse(10, -2, 11, 9, 0, 0, Math.PI * 2)
+  ctx.ellipse(12, -2, 12, 10, 0, 0, Math.PI * 2)
   ctx.fill()
-  // Ears
   ctx.beginPath()
-  ctx.moveTo(2, -8)
-  ctx.lineTo(5, -18)
-  ctx.lineTo(10, -8)
-  ctx.moveTo(12, -8)
-  ctx.lineTo(17, -18)
-  ctx.lineTo(20, -6)
+  ctx.moveTo(4, -8)
+  ctx.lineTo(7, -20)
+  ctx.lineTo(12, -8)
+  ctx.moveTo(14, -8)
+  ctx.lineTo(20, -20)
+  ctx.lineTo(22, -6)
   ctx.fill()
-  // Face
   ctx.fillStyle = '#222'
   ctx.beginPath()
-  ctx.arc(8, -3, 1.4, 0, Math.PI * 2)
-  ctx.arc(14, -3, 1.4, 0, Math.PI * 2)
+  ctx.arc(10, -3, 1.5, 0, Math.PI * 2)
+  ctx.arc(16, -3, 1.5, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = '#222'
-  ctx.lineWidth = 1.2
-  ctx.beginPath()
-  ctx.moveTo(9, 1)
-  ctx.lineTo(13, 1)
-  ctx.stroke()
-  // Cheeks
   ctx.fillStyle = '#ff7aa2'
   ctx.beginPath()
-  ctx.arc(5, 0, 2, 0, Math.PI * 2)
-  ctx.arc(17, 0, 2, 0, Math.PI * 2)
+  ctx.arc(7, 1, 2.2, 0, Math.PI * 2)
+  ctx.arc(19, 1, 2.2, 0, Math.PI * 2)
   ctx.fill()
 
-  // Legs
   ctx.fillStyle = '#9aa0a6'
-  const hop = Math.sin(performance.now() * 0.02) > 0 ? 1 : -1
-  ctx.fillRect(-12, 8, 4, 6 + hop)
-  ctx.fillRect(-4, 8, 4, 6 - hop)
-  ctx.fillRect(4, 8, 4, 6 + hop)
-  ctx.fillRect(10, 8, 4, 6 - hop)
-
-  if (cat.kind === 'boss') {
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.85)'
-    ctx.font = 'bold 10px Fredoka, Nunito, sans-serif'
-    ctx.textAlign = 'center'
-    ctx.fillText('BOSS', 0, -26)
-  }
+  ctx.fillRect(-14, 9, 5, 7 + hop)
+  ctx.fillRect(-5, 9, 5, 7 - hop)
+  ctx.fillRect(4, 9, 5, 7 + hop)
+  ctx.fillRect(12, 9, 5, 7 - hop)
 
   ctx.restore()
 }
 
-export function drawNyanPowerAura(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  active: boolean,
-): void {
-  if (!active) return
-  const t = performance.now() * 0.01
-  for (let i = 0; i < RAINBOW.length; i++) {
-    ctx.strokeStyle = RAINBOW[i]!
-    ctx.globalAlpha = 0.35
-    ctx.lineWidth = 3
-    ctx.beginPath()
-    ctx.arc(x, y, 48 + i * 3 + Math.sin(t + i) * 2, 0, Math.PI * 2)
-    ctx.stroke()
-  }
-  ctx.globalAlpha = 1
+function drawOffscreenMarker(ctx: CanvasRenderingContext2D, viewW: number, y: number, gap: number): void {
+  const mx = viewW - 28
+  ctx.save()
+  ctx.globalAlpha = 0.85
+  ctx.fillStyle = '#ffb6c9'
+  ctx.beginPath()
+  ctx.moveTo(mx, y)
+  ctx.lineTo(mx - 14, y - 10)
+  ctx.lineTo(mx - 14, y + 10)
+  ctx.closePath()
+  ctx.fill()
+  ctx.fillStyle = 'rgba(255,255,255,0.8)'
+  ctx.font = 'bold 11px Fredoka, Nunito, sans-serif'
+  ctx.textAlign = 'right'
+  ctx.fillText(`NYAN ${Math.floor(gap)}m`, mx - 18, y + 4)
+  ctx.restore()
 }
 
 function roundRectFill(

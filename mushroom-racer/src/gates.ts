@@ -1,36 +1,31 @@
+import { SPECTRUM_COUNT } from './spectrum'
+
 export type GateShape = 'triangle' | 'circle' | 'square' | 'star' | 'arch' | 'hexagon'
 export type GatePattern = 'solid' | 'striped' | 'dashed' | 'dual'
 export type GateMotion = 'static' | 'bob' | 'pulse' | 'rotate' | 'zigzag'
 
 export type Gate = {
   id: number
-  /** World X of gate center (scroll space). */
   x: number
-  /** Base Y of opening center. */
   baseY: number
-  /** Current opening center Y after motion. */
   y: number
-  /** Half-height / primary radius of the opening. */
   openHalf: number
-  /** Half-width of the opening (shape-specific). */
   openHalfW: number
   frameThick: number
   shape: GateShape
   pattern: GatePattern
   motion: GateMotion
-  /** Radians; used by rotate. */
+  /** Index into SPECTRUM — gate is this single colour. */
+  color: number
   angle: number
   phase: number
   speed: number
-  /** For dual pattern: gap between stacked openings. */
   dualGap: number
   cleared: boolean
   missed: boolean
-  /** Score awarded when cleared. */
   points: number
 }
 
-/** Geometric rainbow gates — ROYGBIV bands drawn in order on each outline. */
 const SHAPES: GateShape[] = ['triangle', 'circle', 'square', 'star', 'arch', 'hexagon']
 const PATTERNS: GatePattern[] = ['solid', 'striped', 'dashed', 'dual']
 const MOTIONS: GateMotion[] = ['static', 'bob', 'pulse', 'rotate', 'zigzag']
@@ -38,10 +33,12 @@ const MOTIONS: GateMotion[] = ['static', 'bob', 'pulse', 'rotate', 'zigzag']
 export class GateManager {
   gates: Gate[] = []
   private nextId = 1
+  private colorCursor = 0
 
   reset(_viewW: number): void {
     this.gates = []
     this.nextId = 1
+    this.colorCursor = Math.floor(Math.random() * SPECTRUM_COUNT)
   }
 
   update(dt: number, scrollSpeed: number, viewH: number, viewW: number, distance: number): void {
@@ -66,7 +63,6 @@ export class GateManager {
   }
 
   private makeGate(x: number, viewH: number, difficulty: number): Gate {
-    // Early game: simpler shapes first; stars/hexes unlock as difficulty rises
     const shapePool =
       difficulty < 0.15
         ? (['circle', 'square', 'arch', 'triangle'] as GateShape[])
@@ -77,12 +73,18 @@ export class GateManager {
     let pattern = pick(PATTERNS, difficulty)
     const motion = pick(MOTIONS, difficulty * 0.9)
 
-    if (difficulty < 0.2 && Math.random() < 0.55) {
-      pattern = 'solid'
-    }
-    // Dual stacked openings only on shapes that read clearly
+    if (difficulty < 0.2 && Math.random() < 0.55) pattern = 'solid'
     if (pattern === 'dual' && (shape === 'star' || shape === 'arch')) {
       pattern = Math.random() < 0.5 ? 'striped' : 'solid'
+    }
+
+    // Bias toward missing spectrum colours by walking a shuffled cycle with noise
+    let color: number
+    if (Math.random() < 0.55) {
+      color = this.colorCursor % SPECTRUM_COUNT
+      this.colorCursor += 1 + (Math.random() < 0.25 ? 1 : 0)
+    } else {
+      color = Math.floor(Math.random() * SPECTRUM_COUNT)
     }
 
     const openHalf = Math.max(36, lerp(78, 44, difficulty) + Math.random() * 16 - difficulty * 8)
@@ -100,6 +102,7 @@ export class GateManager {
       shape,
       pattern,
       motion: difficulty < 0.15 && Math.random() < 0.5 ? 'static' : motion,
+      color,
       angle: 0,
       phase: Math.random() * Math.PI * 2,
       speed: 1.2 + difficulty * 2.2 + Math.random(),
@@ -107,10 +110,10 @@ export class GateManager {
       cleared: false,
       missed: false,
       points:
-        100 +
-        Math.floor(difficulty * 150) +
-        (motion !== 'static' ? 50 : 0) +
-        (shape === 'star' || shape === 'hexagon' ? 40 : 0),
+        80 +
+        Math.floor(difficulty * 120) +
+        (motion !== 'static' ? 40 : 0) +
+        (shape === 'star' || shape === 'hexagon' ? 30 : 0),
     }
   }
 
@@ -131,11 +134,8 @@ export class GateManager {
         break
       case 'rotate':
         g.y = g.baseY
-        // Stars/hexes look great spinning; arches stay near upright
         g.angle =
-          g.shape === 'arch'
-            ? Math.sin(g.phase * 0.5) * 0.15
-            : Math.sin(g.phase * 0.7) * 0.45
+          g.shape === 'arch' ? Math.sin(g.phase * 0.5) * 0.15 : Math.sin(g.phase * 0.7) * 0.45
         break
       case 'zigzag':
         g.y = g.baseY + Math.sin(g.phase * 2.1) * amp * 0.85

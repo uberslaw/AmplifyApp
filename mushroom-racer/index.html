@@ -19,16 +19,18 @@
       <div id="ui" class="ui">
         <div id="title-screen" class="screen">
           <h1 class="brand">Mushroom Blaze</h1>
-          <p class="tagline">Ride the flaming fungus. Thread the rainbow gates.</p>
+          <p class="tagline">Ride the flaming fungus. Thread the rainbow gates. Catch Nyan Cat.</p>
           <button id="play-btn" class="cta" type="button">Play</button>
-          <p class="hint">↑↓ / drag to steer · Space to boost</p>
+          <p class="hint">↑↓ / drag to steer · Space to boost · catch Nyan for power</p>
         </div>
         <div id="hud" class="hud hidden">
           <span id="score-label">Score <strong id="score">0</strong></span>
           <span id="dist-label">Dist <strong id="distance">0</strong>m</span>
+          <span id="power-label" class="power hidden">Nyan <strong id="power">0.0</strong>s</span>
           <span id="best-label">Best <strong id="best">0</strong></span>
         </div>
         <div id="pause-banner" class="banner hidden">Paused</div>
+        <div id="nyan-banner" class="banner nyan-banner hidden"></div>
         <div id="game-over" class="screen hidden">
           <h2 class="over-title">Crashed!</h2>
           <p class="over-score">Score <strong id="final-score">0</strong></p>

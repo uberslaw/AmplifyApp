@@ -18,6 +18,7 @@ export class Player {
   tilt = 0
   radius = 36
   boosting = false
+  nyanPower = false
   cameraBob = 0
 
   readonly flames: FlameParticle[] = []
@@ -29,14 +30,17 @@ export class Player {
     this.vy = 0
     this.tilt = 0
     this.boosting = false
+    this.nyanPower = false
     this.cameraBob = 0
     this.flames.length = 0
     this.thrustTimer = 0
   }
 
-  update(dt: number, steer: number, boost: boolean, viewH: number): void {
-    const maxSpeed = boost ? 420 : 320
+  update(dt: number, steer: number, boost: boolean, viewH: number, nyanPower = false): void {
+    const powered = boost || nyanPower
+    const maxSpeed = powered ? 420 : 320
     this.boosting = boost
+    this.nyanPower = nyanPower
 
     const target = steer * maxSpeed
     const responsiveness = steer === 0 ? 6 : 10
@@ -54,9 +58,9 @@ export class Player {
     }
 
     this.tilt += (this.vy * 0.0009 - this.tilt) * Math.min(1, dt * 10)
-    this.cameraBob = Math.sin(performance.now() * 0.012) * (boost ? 3.5 : 1.8)
+    this.cameraBob = Math.sin(performance.now() * 0.012) * (powered ? 3.5 : 1.8)
 
-    this.spawnFlames(dt, boost)
+    this.spawnFlames(dt, powered, nyanPower)
     this.updateFlames(dt)
   }
 
@@ -65,22 +69,22 @@ export class Player {
     return { x: this.x + 6, y: this.y + 2, r: this.radius * 0.72 }
   }
 
-  private spawnFlames(dt: number, boost: boolean): void {
+  private spawnFlames(dt: number, powered: boolean, rainbow: boolean): void {
     this.thrustTimer += dt
-    const rate = boost ? 0.012 : 0.022
+    const rate = powered ? 0.012 : 0.022
     while (this.thrustTimer >= rate) {
       this.thrustTimer -= rate
-      const count = boost ? 3 : 2
+      const count = powered ? 3 : 2
       for (let i = 0; i < count; i++) {
         this.flames.push({
           x: this.x - this.radius * 0.85,
           y: this.y + 10 + (Math.random() - 0.5) * 18,
-          vx: -180 - Math.random() * (boost ? 220 : 120),
+          vx: -180 - Math.random() * (powered ? 220 : 120),
           vy: (Math.random() - 0.5) * 80,
           life: 0.28 + Math.random() * 0.22,
           maxLife: 0.5,
-          size: 6 + Math.random() * (boost ? 10 : 6),
-          hue: 25 + Math.random() * 35,
+          size: 6 + Math.random() * (powered ? 10 : 6),
+          hue: rainbow ? Math.random() * 360 : 25 + Math.random() * 35,
         })
       }
     }

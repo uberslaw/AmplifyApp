@@ -2,6 +2,7 @@ import { AudioBus } from './audio'
 import { testGateCrossing } from './collision'
 import { GateManager } from './gates'
 import { Input } from './input'
+import { drawNyanCats, drawNyanPowerAura, NyanManager } from './nyan'
 import { Player } from './player'
 import { drawBackground, drawFlash, drawGates, drawPlayer, makeClouds, type Cloud } from './render'
 
@@ -17,6 +18,7 @@ export class Game {
 
   private player = new Player()
   private gates = new GateManager()
+  private nyan = new NyanManager()
   private audio = new AudioBus()
   private clouds: Cloud[] = []
   private scroll = 0
@@ -32,9 +34,12 @@ export class Game {
     title: HTMLElement
     hud: HTMLElement
     pause: HTMLElement
+    nyanBanner: HTMLElement
     over: HTMLElement
     score: HTMLElement
     distance: HTMLElement
+    powerLabel: HTMLElement
+    power: HTMLElement
     best: HTMLElement
     finalScore: HTMLElement
     finalBest: HTMLElement
@@ -51,9 +56,12 @@ export class Game {
       title: must('#title-screen'),
       hud: must('#hud'),
       pause: must('#pause-banner'),
+      nyanBanner: must('#nyan-banner'),
       over: must('#game-over'),
       score: must('#score'),
       distance: must('#distance'),
+      powerLabel: must('#power-label'),
+      power: must('#power'),
       best: must('#best'),
       finalScore: must('#final-score'),
       finalBest: must('#final-best'),
@@ -87,11 +95,11 @@ export class Game {
     this.player.reset(this.h)
     this.player.x = Math.min(200, this.w * 0.22)
     this.gates.reset(this.w)
+    this.nyan.reset()
     this.syncUi()
   }
 
   update(dt: number): void {
-    // Title idle animation
     if (this.mode === 'title') {
       if (this.input.state.playPressed) this.start()
       this.player.update(dt, Math.sin(performance.now() * 0.0015) * 0.25, true, this.h)
@@ -117,19 +125,20 @@ export class Game {
 
     if (this.mode === 'paused') {
       this.draw()
+      this.syncNyanBanner()
       this.input.endFrame()
       return
     }
 
-    // Playing
     const difficulty = Math.min(1, this.distance / 2800)
-    this.scrollSpeed = 220 + difficulty * 180 + (this.player.boosting ? 90 : 0)
+    const nyanPower = this.nyan.powerSecondsLeft > 0
+    this.scrollSpeed =
+      220 + difficulty * 180 + (this.player.boosting || nyanPower ? 90 : 0) + (nyanPower ? 40 : 0)
 
     const steer = this.input.getSteer()
     const boost = this.input.state.boost
-    this.player.update(dt, steer, boost, this.h)
+    this.player.update(dt, steer, boost, this.h, nyanPower)
 
-    // Keep player at fixed screen X; world scrolls
     this.player.x = Math.min(200, this.w * 0.22)
     const scrollDelta = this.scrollSpeed * dt
     this.scroll += scrollDelta
@@ -138,23 +147,38 @@ export class Game {
     this.gates.update(dt, this.scrollSpeed, this.h, this.w, this.distance)
 
     const hb = this.player.hitbox()
+    const { caught } = this.nyan.update(dt, this.scrollSpeed, this.w, this.h, this.distance, hb)
+    if (caught) {
+      this.score += caught.points
+      this.flash = 0.28
+      this.flashColor = 'rgba(180, 220, 255, 1)'
+      this.audio.nyanCatch(caught.kind === 'boss')
+    }
+
+    const mult = this.nyan.scoreMultiplier
     for (const gate of this.gates.gates) {
       const result = testGateCrossing(hb, gate, scrollDelta)
       if (result.kind === 'clear') {
         gate.cleared = true
-        this.score += gate.points
+        this.score += Math.floor(gate.points * mult)
         this.flash = 0.22
         this.flashColor = 'rgba(255, 220, 120, 1)'
         this.audio.gateClear()
       } else if (result.kind === 'hit' || result.kind === 'miss') {
         gate.missed = true
-        this.die()
-        break
+        if (this.nyan.isInvulnerable) {
+          // Powered: phase through without dying; still no clear score
+          this.flash = 0.12
+          this.flashColor = 'rgba(120, 220, 255, 0.8)'
+        } else {
+          this.die()
+          break
+        }
       }
     }
 
     this.thrustSoundT -= dt
-    if (boost && this.thrustSoundT <= 0) {
+    if ((boost || nyanPower) && this.thrustSoundT <= 0) {
       this.audio.boost()
       this.thrustSoundT = 0.18
     } else if (this.thrustSoundT <= 0) {
@@ -165,6 +189,7 @@ export class Game {
     this.flash = Math.max(0, this.flash - dt)
     this.draw()
     this.syncHud()
+    this.syncNyanBanner()
     this.input.endFrame()
   }
 
@@ -191,6 +216,8 @@ export class Game {
 
     drawBackground(ctx, this.w, this.h, this.clouds, this.scroll, this.player.cameraBob)
     drawGates(ctx, this.gates.gates)
+    drawNyanCats(ctx, this.nyan.cats)
+    drawNyanPowerAura(ctx, this.player.x, this.player.y, this.nyan.powerSecondsLeft > 0)
     drawPlayer(ctx, this.player)
     drawFlash(ctx, this.w, this.h, this.flash, this.flashColor)
 
@@ -203,6 +230,7 @@ export class Game {
     this.els.hud.classList.toggle('hidden', this.mode !== 'playing' && this.mode !== 'paused')
     this.els.pause.classList.toggle('hidden', this.mode !== 'paused')
     this.syncHud()
+    this.syncNyanBanner()
     if (this.mode === 'gameover') {
       this.els.finalScore.textContent = String(this.score)
       this.els.finalBest.textContent = String(this.best)
@@ -213,6 +241,17 @@ export class Game {
     this.els.score.textContent = String(this.score)
     this.els.distance.textContent = String(Math.floor(this.distance))
     this.els.best.textContent = String(this.best)
+    const left = this.nyan.powerSecondsLeft
+    this.els.powerLabel.classList.toggle('hidden', left <= 0)
+    if (left > 0) {
+      this.els.power.textContent = left.toFixed(1)
+    }
+  }
+
+  private syncNyanBanner(): void {
+    const text = this.nyan.banner
+    this.els.nyanBanner.classList.toggle('hidden', !text)
+    if (text) this.els.nyanBanner.textContent = text
   }
 }
 

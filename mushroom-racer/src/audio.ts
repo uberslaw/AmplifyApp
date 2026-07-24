@@ -31,6 +31,17 @@ export class AudioBus {
     this.tone(360, 0.08, 'triangle', 0.04, 0.04)
   }
 
+  /** Chirpy catch jingle for Nyan Cat / boss. */
+  nyanCatch(boss = false): void {
+    const base = boss ? 440 : 520
+    this.tone(base, 0.07, 'square', 0.07)
+    this.tone(base * 1.25, 0.08, 'triangle', 0.06, 0.05)
+    this.tone(base * 1.5, 0.1, 'sine', 0.05, 0.1)
+    if (boss) {
+      this.tone(base * 2, 0.14, 'triangle', 0.05, 0.16)
+    }
+  }
+
   private ensure(): AudioContext {
     if (!this.ctx) {
       this.ctx = new AudioContext()

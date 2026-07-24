@@ -12,13 +12,15 @@ Personal projects monorepo.
 
 ## Mushroom Blaze (quick start)
 
+Works the same on Windows, macOS, and Linux (install [Node.js](https://nodejs.org/) first):
+
 ```bash
 cd mushroom-racer
 npm install
 npm run dev
 ```
 
-See [`mushroom-racer/README.md`](mushroom-racer/README.md) for controls and build notes.
+Catch Nyan Cat for power-ups; rare Nyan Boss flybys award bigger bonuses. See [`mushroom-racer/README.md`](mushroom-racer/README.md) for controls and build notes.
 
 ## CopperHead (quick start)
 

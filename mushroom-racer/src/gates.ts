@@ -1,4 +1,4 @@
-export type GateShape = 'rect' | 'oval' | 'diamond' | 'parallelogram'
+export type GateShape = 'triangle' | 'circle' | 'square' | 'star' | 'arch' | 'hexagon'
 export type GatePattern = 'solid' | 'striped' | 'dashed' | 'dual'
 export type GateMotion = 'static' | 'bob' | 'pulse' | 'rotate' | 'zigzag'
 
@@ -10,9 +10,9 @@ export type Gate = {
   baseY: number
   /** Current opening center Y after motion. */
   y: number
-  /** Half-height of the opening. */
+  /** Half-height / primary radius of the opening. */
   openHalf: number
-  /** Half-width of the opening / frame thickness context. */
+  /** Half-width of the opening (shape-specific). */
   openHalfW: number
   frameThick: number
   shape: GateShape
@@ -30,7 +30,8 @@ export type Gate = {
   points: number
 }
 
-const SHAPES: GateShape[] = ['rect', 'oval', 'diamond', 'parallelogram']
+/** Geometric rainbow gates — ROYGBIV bands drawn in order on each outline. */
+const SHAPES: GateShape[] = ['triangle', 'circle', 'square', 'star', 'arch', 'hexagon']
 const PATTERNS: GatePattern[] = ['solid', 'striped', 'dashed', 'dual']
 const MOTIONS: GateMotion[] = ['static', 'bob', 'pulse', 'rotate', 'zigzag']
 
@@ -65,17 +66,27 @@ export class GateManager {
   }
 
   private makeGate(x: number, viewH: number, difficulty: number): Gate {
-    const shape = pick(SHAPES, difficulty)
+    // Early game: simpler shapes first; stars/hexes unlock as difficulty rises
+    const shapePool =
+      difficulty < 0.15
+        ? (['circle', 'square', 'arch', 'triangle'] as GateShape[])
+        : difficulty < 0.4
+          ? (['circle', 'square', 'arch', 'triangle', 'hexagon'] as GateShape[])
+          : SHAPES
+    const shape = pick(shapePool, difficulty)
     let pattern = pick(PATTERNS, difficulty)
     const motion = pick(MOTIONS, difficulty * 0.9)
 
-    // Early game: prefer simpler gates
     if (difficulty < 0.2 && Math.random() < 0.55) {
       pattern = 'solid'
     }
+    // Dual stacked openings only on shapes that read clearly
+    if (pattern === 'dual' && (shape === 'star' || shape === 'arch')) {
+      pattern = Math.random() < 0.5 ? 'striped' : 'solid'
+    }
 
-    const openHalf = lerp(78, 42, difficulty) + Math.random() * 18 - difficulty * 8
-    const openHalfW = shape === 'oval' ? openHalf * 0.55 : 22 + Math.random() * 10
+    const openHalf = Math.max(36, lerp(78, 44, difficulty) + Math.random() * 16 - difficulty * 8)
+    const openHalfW = sizeForShape(shape, openHalf)
     const baseY = viewH * (0.28 + Math.random() * 0.44)
 
     return {
@@ -83,7 +94,7 @@ export class GateManager {
       x,
       baseY,
       y: baseY,
-      openHalf: Math.max(34, openHalf),
+      openHalf,
       openHalfW,
       frameThick: 16 + Math.random() * 6,
       shape,
@@ -95,7 +106,11 @@ export class GateManager {
       dualGap: 48 + Math.random() * 30,
       cleared: false,
       missed: false,
-      points: 100 + Math.floor(difficulty * 150) + (motion !== 'static' ? 50 : 0),
+      points:
+        100 +
+        Math.floor(difficulty * 150) +
+        (motion !== 'static' ? 50 : 0) +
+        (shape === 'star' || shape === 'hexagon' ? 40 : 0),
     }
   }
 
@@ -116,14 +131,19 @@ export class GateManager {
         break
       case 'rotate':
         g.y = g.baseY
-        g.angle = Math.sin(g.phase * 0.7) * 0.45
+        // Stars/hexes look great spinning; arches stay near upright
+        g.angle =
+          g.shape === 'arch'
+            ? Math.sin(g.phase * 0.5) * 0.15
+            : Math.sin(g.phase * 0.7) * 0.45
         break
       case 'zigzag':
         g.y = g.baseY + Math.sin(g.phase * 2.1) * amp * 0.85
         g.angle = Math.sin(g.phase) * 0.2
         break
     }
-    g.y = Math.max(g.openHalf + 40, Math.min(viewH - g.openHalf - 40, g.y))
+    const pad = g.openHalf + 40
+    g.y = Math.max(pad, Math.min(viewH - pad, g.y))
   }
 }
 
@@ -132,8 +152,25 @@ export function gatePulseScale(g: Gate): number {
   return 0.7 + 0.3 * Math.sin(g.phase * 1.4)
 }
 
+function sizeForShape(shape: GateShape, openHalf: number): number {
+  switch (shape) {
+    case 'circle':
+    case 'square':
+    case 'hexagon':
+    case 'star':
+      return openHalf
+    case 'triangle':
+      return openHalf * 0.85
+    case 'arch':
+      return openHalf * 0.75
+  }
+}
+
 function pick<T>(arr: T[], difficulty: number): T {
-  const idx = Math.min(arr.length - 1, Math.floor(Math.random() * arr.length * (0.55 + difficulty * 0.55)))
+  const idx = Math.min(
+    arr.length - 1,
+    Math.floor(Math.random() * arr.length * (0.55 + difficulty * 0.55)),
+  )
   return arr[idx]!
 }
 

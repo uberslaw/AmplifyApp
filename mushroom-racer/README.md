@@ -34,6 +34,7 @@ On Windows, if `npm` is not found, install Node from nodejs.org and reopen the t
 ## Gameplay
 
 - Clear rainbow gates to score. Hit a frame or miss the opening and the run ends.
+- Gates keep **ROYGBIV** colour order on geometric outlines: triangle, circle, square, star, arch, hexagon.
 - **Nyan Cat** flies across with a rainbow trail — steer into it to catch it.
   - Power-up: score multiplier, brief invulnerability, rainbow thrust.
 - **Nyan Boss** (rarer, after some distance): bigger, wilder flight path, bigger score + longer power.

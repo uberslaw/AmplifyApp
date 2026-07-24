@@ -1,6 +1,8 @@
 import { gatePulseScale, type Gate } from './gates'
 import type { Player } from './player'
+import { pathGateShape } from './shapes'
 
+/** ROYGBIV order — outer band red → inner violet. */
 const RAINBOW = ['#ff3b3b', '#ff8a1f', '#ffd84a', '#3dce6a', '#3aa0ff', '#7b5cff', '#e048c7']
 
 export type Cloud = { x: number; y: number; s: number; a: number }
@@ -145,50 +147,7 @@ function pathOpening(
   openHalf: number,
   openHalfW: number,
 ): void {
-  ctx.beginPath()
-  switch (shape) {
-    case 'oval':
-      ctx.ellipse(0, 0, openHalfW + 10, openHalf, 0, 0, Math.PI * 2)
-      break
-    case 'diamond':
-      ctx.moveTo(0, -openHalf)
-      ctx.lineTo(openHalfW + 16, 0)
-      ctx.lineTo(0, openHalf)
-      ctx.lineTo(-(openHalfW + 16), 0)
-      ctx.closePath()
-      break
-    case 'parallelogram': {
-      const skew = openHalf * 0.35
-      ctx.moveTo(-openHalfW - 8 + skew, -openHalf)
-      ctx.lineTo(openHalfW + 8 + skew, -openHalf)
-      ctx.lineTo(openHalfW + 8 - skew, openHalf)
-      ctx.lineTo(-openHalfW - 8 - skew, openHalf)
-      ctx.closePath()
-      break
-    }
-    case 'rect':
-    default: {
-      const r = 10
-      roundRect(ctx, -openHalfW - 10, -openHalf, (openHalfW + 10) * 2, openHalf * 2, r)
-      break
-    }
-  }
-}
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-): void {
-  ctx.moveTo(x + r, y)
-  ctx.arcTo(x + w, y, x + w, y + h, r)
-  ctx.arcTo(x + w, y + h, x, y + h, r)
-  ctx.arcTo(x, y + h, x, y, r)
-  ctx.arcTo(x, y, x + w, y, r)
-  ctx.closePath()
+  pathGateShape(ctx, shape, openHalf, openHalfW)
 }
 
 export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player): void {

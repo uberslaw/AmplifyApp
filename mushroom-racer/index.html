@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#1a0f2e" />
+    <title>Mushroom Blaze</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game" aria-label="Mushroom Blaze game"></canvas>
+      <div id="ui" class="ui">
+        <div id="title-screen" class="screen">
+          <h1 class="brand">Mushroom Blaze</h1>
+          <p class="tagline">Ride the flaming fungus. Thread the rainbow gates.</p>
+          <button id="play-btn" class="cta" type="button">Play</button>
+          <p class="hint">↑↓ / drag to steer · Space to boost</p>
+        </div>
+        <div id="hud" class="hud hidden">
+          <span id="score-label">Score <strong id="score">0</strong></span>
+          <span id="dist-label">Dist <strong id="distance">0</strong>m</span>
+          <span id="best-label">Best <strong id="best">0</strong></span>
+        </div>
+        <div id="pause-banner" class="banner hidden">Paused</div>
+        <div id="game-over" class="screen hidden">
+          <h2 class="over-title">Crashed!</h2>
+          <p class="over-score">Score <strong id="final-score">0</strong></p>
+          <p class="over-best">Best <strong id="final-best">0</strong></p>
+          <button id="restart-btn" class="cta" type="button">Ride Again</button>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

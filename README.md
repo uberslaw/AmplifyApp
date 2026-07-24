@@ -1,22 +1,31 @@
-# CopperHead
+# amplifyapp
 
-Windows utility that periodically resolves hostnames and updates `/32` routes so selected destinations egress via a chosen adapter (for example a phone tether).
+Personal projects monorepo.
 
-## Project
+## Projects
 
 | Path | Description |
 |---|---|
-| [`src/CopperHead`](src/CopperHead) | WinForms app — processes, routes, discover, traffic, logs |
-| [`docs/hosts-cursor.txt`](docs/hosts-cursor.txt) | Optional shared Cursor hostname list for **Fetch list** |
+| [`mushroom-racer/`](mushroom-racer/) | **Mushroom Blaze** — web side-scroller: flaming mushroom through rainbow gates |
+| [`src/CopperHead`](src/CopperHead) | WinForms utility — hostname routes via a chosen adapter |
+| [`docs/hosts-cursor.txt`](docs/hosts-cursor.txt) | Optional shared Cursor hostname list for CopperHead **Fetch list** |
 
-See [`src/CopperHead/README.md`](src/CopperHead/README.md) for build and usage.
+## Mushroom Blaze (quick start)
 
-## Quick start
+```bash
+cd mushroom-racer
+npm install
+npm run dev
+```
+
+See [`mushroom-racer/README.md`](mushroom-racer/README.md) for controls and build notes.
+
+## CopperHead (quick start)
 
 ```powershell
-cd C:\Users\today\Cursor\CopperHead\src\CopperHead
+cd src\CopperHead
 dotnet publish -c Release -r win-x64 --self-contained false -o ..\..\publish
 Start-Process ..\..\publish\CopperHead.exe -Verb RunAs
 ```
 
-Repository: https://github.com/uberslaw/CopperHead
+See [`src/CopperHead/README.md`](src/CopperHead/README.md) for build and usage.

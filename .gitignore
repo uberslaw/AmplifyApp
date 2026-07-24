@@ -14,3 +14,6 @@ node_modules/
 dist/
 *.local
 .DS_Store
+
+# Game lives in uberslaw/PorchiniRacer — local copy only
+porchini-racer/

@@ -2,9 +2,11 @@ import { AudioBus } from './audio'
 import { testGateCrossing } from './collision'
 import { GateManager } from './gates'
 import { Input } from './input'
+import { drawMeteors, MeteorManager } from './meteors'
 import { drawNyanCats, drawNyanPowerAura, NyanManager } from './nyan'
 import { Player } from './player'
-import { drawBackground, drawFlash, drawGates, drawPlayer, makeClouds, type Cloud } from './render'
+import { drawFlash, drawGates, drawPlayer } from './render'
+import { drawStarfield, makeStarfield, type Starfield } from './starfield'
 
 export type GameMode = 'title' | 'playing' | 'paused' | 'gameover'
 
@@ -19,8 +21,9 @@ export class Game {
   private player = new Player()
   private gates = new GateManager()
   private nyan = new NyanManager()
+  private meteors = new MeteorManager()
   private audio = new AudioBus()
-  private clouds: Cloud[] = []
+  private starfield: Starfield | null = null
   private scroll = 0
   private scrollSpeed = 220
   private flash = 0
@@ -74,9 +77,7 @@ export class Game {
   resize(w: number, h: number): void {
     this.w = w
     this.h = h
-    if (this.clouds.length === 0) {
-      this.clouds = makeClouds(w, h)
-    }
+    this.starfield = makeStarfield(w, h)
     if (this.mode === 'title') {
       this.player.reset(h)
       this.player.x = Math.min(200, w * 0.22)
@@ -96,6 +97,7 @@ export class Game {
     this.player.x = Math.min(200, this.w * 0.22)
     this.gates.reset(this.w)
     this.nyan.reset()
+    this.meteors.reset()
     this.syncUi()
   }
 
@@ -104,6 +106,7 @@ export class Game {
       if (this.input.state.playPressed) this.start()
       this.player.update(dt, Math.sin(performance.now() * 0.0015) * 0.25, true, this.h)
       this.scroll += 60 * dt
+      this.meteors.update(dt * 0.45, this.w, this.h, 200)
       this.draw()
       this.input.endFrame()
       return
@@ -145,6 +148,7 @@ export class Game {
     this.distance += scrollDelta / 10
 
     this.gates.update(dt, this.scrollSpeed, this.h, this.w, this.distance)
+    this.meteors.update(dt, this.w, this.h, this.distance)
 
     const hb = this.player.hitbox()
     const { caught } = this.nyan.update(dt, this.scrollSpeed, this.w, this.h, this.distance, hb)
@@ -153,6 +157,18 @@ export class Game {
       this.flash = 0.28
       this.flashColor = 'rgba(180, 220, 255, 1)'
       this.audio.nyanCatch(caught.kind === 'boss')
+    }
+
+    if (this.meteors.hitsPlayer(hb)) {
+      if (this.nyan.isInvulnerable) {
+        this.flash = 0.1
+        this.flashColor = 'rgba(120, 220, 255, 0.7)'
+      } else {
+        this.die()
+        this.draw()
+        this.input.endFrame()
+        return
+      }
     }
 
     const mult = this.nyan.scoreMultiplier
@@ -167,7 +183,6 @@ export class Game {
       } else if (result.kind === 'hit' || result.kind === 'miss') {
         gate.missed = true
         if (this.nyan.isInvulnerable) {
-          // Powered: phase through without dying; still no clear score
           this.flash = 0.12
           this.flashColor = 'rgba(120, 220, 255, 0.8)'
         } else {
@@ -214,8 +229,10 @@ export class Game {
     ctx.save()
     ctx.translate(shakeX, shakeY)
 
-    drawBackground(ctx, this.w, this.h, this.clouds, this.scroll, this.player.cameraBob)
+    if (!this.starfield) this.starfield = makeStarfield(this.w, this.h)
+    drawStarfield(ctx, this.w, this.h, this.starfield, this.scroll, this.player.cameraBob)
     drawGates(ctx, this.gates.gates)
+    drawMeteors(ctx, this.meteors.meteors)
     drawNyanCats(ctx, this.nyan.cats)
     drawNyanPowerAura(ctx, this.player.x, this.player.y, this.nyan.powerSecondsLeft > 0)
     drawPlayer(ctx, this.player)

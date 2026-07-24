@@ -1,5 +1,5 @@
 import { gatePulseScale, type Gate } from './gates'
-import { pointInGateOpening } from './shapes'
+import { GATE_HOLE_SCALE, pointInGateOpening } from './shapes'
 
 export type CollisionResult =
   | { kind: 'none' }
@@ -9,7 +9,8 @@ export type CollisionResult =
 
 /**
  * Gates scroll left past a fixed on-screen player. When a gate's X crosses
- * the player this frame, test whether the hit circle fits the opening.
+ * the player this frame, test whether they pass through the hollow middle
+ * (clear), clip the rainbow rim (hit), or miss the gate entirely.
  */
 export function testGateCrossing(
   player: { x: number; y: number; r: number },
@@ -29,18 +30,19 @@ export function testGateCrossing(
   if (gate.pattern === 'dual') {
     const topY = gate.y - gate.dualGap * 0.5
     const botY = gate.y + gate.dualGap * 0.5
-    const inTop = inOpening(player, gate, topY, openHalf * 0.72, openHalfW * 0.9)
-    const inBot = inOpening(player, gate, botY, openHalf * 0.72, openHalfW * 0.9)
-    if (inTop || inBot) return { kind: 'clear', gate }
+    const top = classifyOpening(player, gate, topY, openHalf * 0.72, openHalfW * 0.9)
+    const bot = classifyOpening(player, gate, botY, openHalf * 0.72, openHalfW * 0.9)
+    if (top === 'clear' || bot === 'clear') return { kind: 'clear', gate }
+    if (top === 'rim' || bot === 'rim') return { kind: 'hit', gate }
     if (Math.abs(player.y - gate.y) < openHalf + gate.dualGap) {
       return { kind: 'hit', gate }
     }
     return { kind: 'miss', gate }
   }
 
-  if (inOpening(player, gate, gate.y, openHalf, openHalfW)) {
-    return { kind: 'clear', gate }
-  }
+  const result = classifyOpening(player, gate, gate.y, openHalf, openHalfW)
+  if (result === 'clear') return { kind: 'clear', gate }
+  if (result === 'rim') return { kind: 'hit', gate }
 
   const span = openHalf + gate.frameThick * 2.4
   if (Math.abs(player.y - gate.y) < span) {
@@ -49,18 +51,31 @@ export function testGateCrossing(
   return { kind: 'miss', gate }
 }
 
-function inOpening(
+function classifyOpening(
   player: { x: number; y: number; r: number },
   gate: Gate,
   cy: number,
   openHalf: number,
   openHalfW: number,
-): boolean {
+): 'clear' | 'rim' | 'out' {
   const cos = Math.cos(-gate.angle)
   const sin = Math.sin(-gate.angle)
   const dx = player.x - gate.x
   const dy = player.y - cy
   const lx = dx * cos - dy * sin
   const ly = dx * sin + dy * cos
-  return pointInGateOpening(gate.shape, lx, ly, openHalf, openHalfW, player.r)
+
+  const inHole = pointInGateOpening(
+    gate.shape,
+    lx,
+    ly,
+    openHalf * GATE_HOLE_SCALE,
+    openHalfW * GATE_HOLE_SCALE,
+    player.r * 0.65,
+  )
+  if (inHole) return 'clear'
+
+  const inOuter = pointInGateOpening(gate.shape, lx, ly, openHalf, openHalfW, player.r * 0.35)
+  if (inOuter) return 'rim'
+  return 'out'
 }

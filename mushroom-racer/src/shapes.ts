@@ -1,13 +1,17 @@
 import type { GateShape } from './gates'
 
+/** Inner hollow as a fraction of the outer rim — must match portal rendering. */
+export const GATE_HOLE_SCALE = 0.58
+
 /** Build the geometric outline for a gate opening (local space, centered). */
 export function pathGateShape(
   ctx: CanvasRenderingContext2D,
   shape: GateShape,
   openHalf: number,
   openHalfW: number,
+  startNewPath = true,
 ): void {
-  ctx.beginPath()
+  if (startNewPath) ctx.beginPath()
   switch (shape) {
     case 'circle': {
       const r = Math.max(openHalf, openHalfW)

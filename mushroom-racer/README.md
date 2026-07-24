@@ -1,6 +1,6 @@
 # Mushroom Blaze
 
-Side-scrolling racer: ride a flaming giant mushroom through rainbow gates of shifting sizes, shapes, patterns, and speeds. Catch **Nyan Cat** for power-ups — and watch for the rare **Nyan Boss**.
+Side-scrolling space racer: ride a flaming giant mushroom through side-on rainbow portal gates, dodge raining meteors, and catch **Nyan Cat** (plus the rare **Nyan Boss**).
 
 ## Play (macOS / Linux / Windows)
 
@@ -33,8 +33,9 @@ On Windows, if `npm` is not found, install Node from nodejs.org and reopen the t
 
 ## Gameplay
 
-- Clear rainbow gates to score. Hit a frame or miss the opening and the run ends.
-- Gates keep **ROYGBIV** colour order on geometric outlines: triangle, circle, square, star, arch, hexagon.
+- Fly through the hollow middle of side-on rainbow portal gates to score. Clip the rim or miss and the run ends.
+- Gates keep **ROYGBIV** colour order on geometric shapes: triangle, circle, square, star, arch, hexagon.
+- Background is an outer-space starfield; **meteors** rain down — steer to avoid them.
 - **Nyan Cat** flies across with a rainbow trail — steer into it to catch it.
   - Power-up: score multiplier, brief invulnerability, rainbow thrust.
 - **Nyan Boss** (rarer, after some distance): bigger, wilder flight path, bigger score + longer power.

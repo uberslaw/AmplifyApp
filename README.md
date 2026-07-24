@@ -1,28 +1,17 @@
-# amplifyapp
+# CopperHead
 
-Personal projects monorepo.
+Windows utility that periodically resolves hostnames and updates `/32` routes so selected destinations egress via a chosen adapter (for example a phone tether).
 
-## Projects
+## Project
 
 | Path | Description |
 |---|---|
-| [`mushroom-racer/`](mushroom-racer/) | **Mushroom Blaze** — web side-scroller: flaming mushroom through rainbow gates |
-| [`src/CopperHead`](src/CopperHead) | WinForms utility — hostname routes via a chosen adapter |
-| [`docs/hosts-cursor.txt`](docs/hosts-cursor.txt) | Optional shared Cursor hostname list for CopperHead **Fetch list** |
+| [`src/CopperHead`](src/CopperHead) | WinForms app — processes, routes, discover, traffic, logs |
+| [`docs/hosts-cursor.txt`](docs/hosts-cursor.txt) | Optional shared Cursor hostname list for **Fetch list** |
 
-## Mushroom Blaze (quick start)
+See [`src/CopperHead/README.md`](src/CopperHead/README.md) for build and usage.
 
-Works the same on Windows, macOS, and Linux (install [Node.js](https://nodejs.org/) first):
-
-```bash
-cd mushroom-racer
-npm install
-npm run dev
-```
-
-Catch Nyan Cat for power-ups; rare Nyan Boss flybys award bigger bonuses. See [`mushroom-racer/README.md`](mushroom-racer/README.md) for controls and build notes.
-
-## CopperHead (quick start)
+## Quick start
 
 ```powershell
 cd src\CopperHead
@@ -30,4 +19,7 @@ dotnet publish -c Release -r win-x64 --self-contained false -o ..\..\publish
 Start-Process ..\..\publish\CopperHead.exe -Verb RunAs
 ```
 
-See [`src/CopperHead/README.md`](src/CopperHead/README.md) for build and usage.
+> **Note:** The Mushroom Blaze / Porchini Racer game was moved to
+> https://github.com/uberslaw/PorchiniRacer
+
+Repository: https://github.com/uberslaw/CopperHead

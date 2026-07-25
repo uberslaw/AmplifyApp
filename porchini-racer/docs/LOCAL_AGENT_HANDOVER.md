@@ -12,17 +12,17 @@ Use this when continuing work in a **local Cursor agent** on the Windows machine
 | **Play path** | `C:\Porchini Racer` → `npm run dev` → browser `http://localhost:5173` |
 | **Canonical game GitHub** | https://github.com/uberslaw/PorchiniRacer (`main`) |
 | **Agent / cloud handoff repo** | https://github.com/uberslaw/CopperHead branch `cursor/mushroom-blaze-racer-dde7` folder `porchini-racer/` |
-| **Latest stamp** | Menu shows `vX.Y.Z · … UTC` from `src/version.ts` |
+| **Latest stamp** | **v0.7.5 · 2026-07-25 13:15 UTC** (`src/version.ts`) |
 
 Cloud Cursor agents historically could **write CopperHead** but not always **read/write PorchiniRacer** (private + GitHub App install scope). Local agents on the laptop can use both if `gh`/git is signed in as the user.
 
 ---
 
-## Current gameplay (as of v0.7.4)
+## Current gameplay (as of v0.7.5)
 
 - Side-scroll: mushroom rocket through single-colour ROYGBIV gates
-- Clear = fly through the **visual hollow** (shape-matched to art); rim clip = miss
-- Successful clear → gate **shatters** into coloured shards (~1s fade)
+- Clear = fly through the **full art hollow** (gates drawn mostly face-on; not a tiny foreshortened bullseye)
+- Successful clear → gate **shatters** into ~1000 shards of its spectrum colour (~1s fade)
 - Triple gate spacing; ~50% larger gates on Easy/Normal; no wobble yet
 - Rush gates every 1st/3rd/5th/7th (rolled per run)
 - Buffalo wing powerup ~every 60s: meteor shield + free miss charges
@@ -164,7 +164,7 @@ Ship `dev-loop.cmd` already in Porchini Racer for manual restarts.
 ## Moving this chat to a local agent
 
 1. Open Cursor **on the Windows machine** with folder `C:\Porchini Racer` (or CopperHead checkout).
-2. Paste this file + ask to continue from **v0.7.4**.
+2. Paste this file + ask to continue from **v0.7.5**.
 3. For art: drop files into `Art\source\` — local agents can usually read disk paths / attachments better than cloud mobile.
 4. Prefer committing to **PorchiniRacer** from the local machine; use CopperHead only if the cloud agent must ship code.
 

@@ -27,16 +27,20 @@ export function testGateCrossing(
   const pulse = gatePulseScale(gate)
   const openHalf = gate.openHalf * pulse
   const openHalfW = gate.openHalfW * pulse
-  // Match the rendered hollow (same scale as drawPortal inner path)
+  // Clear zone = rendered hollow (GATE_HOLE_SCALE), same as art opening
   const holeH = openHalf * GATE_HOLE_SCALE
   const holeW = openHalfW * GATE_HOLE_SCALE
 
-  // Player → gate local (rotation only; crossing is on the gate plane so lx ≈ 0)
+  // Player → gate local space
+  const dx = player.x - gate.x
   const dy = player.y - gate.y
   const c = Math.cos(-gate.angle)
   const s = Math.sin(-gate.angle)
-  const ly = dy * c // lx unused at plane crossing
-  const lx = dy * s * 0.15 // slight sideways from rotation
+  const lx = dx * c - dy * s
+  const ly = dx * s + dy * c
+
+  // Forgiveness: expand hollow a bit so the mushroom body fits the art gap
+  const clearPad = -player.r * 0.55
 
   if (gate.pattern === 'dual') {
     const offsets = [-gate.dualGap * 0.5, gate.dualGap * 0.5]
@@ -46,15 +50,15 @@ export function testGateCrossing(
     let inOuter = false
     for (const oy of offsets) {
       const ply = ly - oy
-      if (pointInGateOpening(gate.shape, lx, ply, h, w, -player.r * 0.4)) inHole = true
+      if (pointInGateOpening(gate.shape, lx, ply, h, w, clearPad)) inHole = true
       if (
         pointInGateOpening(
           gate.shape,
           lx,
           ply,
-          openHalf * 0.72 + gate.frameThick * 0.35,
-          openHalfW + gate.frameThick * 0.35,
-          player.r * 0.15,
+          openHalf * 0.72 + gate.frameThick * 0.5,
+          openHalfW + gate.frameThick * 0.5,
+          player.r * 0.05,
         )
       ) {
         inOuter = true
@@ -65,20 +69,20 @@ export function testGateCrossing(
     return { kind: 'miss', gate }
   }
 
-  // Clear = anywhere inside the art hollow (slightly expanded for fairness)
-  if (pointInGateOpening(gate.shape, lx, ly, holeH, holeW, -player.r * 0.45)) {
+  // Clear = inside the visible hollow (full art opening, not a tiny bullseye)
+  if (pointInGateOpening(gate.shape, lx, ly, holeH, holeW, clearPad)) {
     return { kind: 'clear', gate }
   }
 
-  // Rim = outer art frame minus hollow
+  // Rim = outer art frame
   if (
     pointInGateOpening(
       gate.shape,
       lx,
       ly,
-      openHalf + gate.frameThick * 0.4,
-      openHalfW + gate.frameThick * 0.4,
-      player.r * 0.1,
+      openHalf + gate.frameThick * 0.55,
+      openHalfW + gate.frameThick * 0.55,
+      player.r * 0.05,
     )
   ) {
     return { kind: 'hit', gate }

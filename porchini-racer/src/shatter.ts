@@ -18,8 +18,8 @@ export type Shard = {
 }
 
 const SHATTER_LIFE = 1.0
-/** Enough shards to read as a dense break-up (~1s fade). */
-const SHARD_COUNT = 720
+/** ~a thousand shards of the gate's colour, fading over ~1s. */
+const SHARD_COUNT = 1000
 
 export class ShatterSystem {
   shards: Shard[] = []

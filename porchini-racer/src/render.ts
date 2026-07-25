@@ -4,9 +4,12 @@ import type { Player } from './player'
 import { GATE_HOLE_SCALE, pathGateShape } from './shapes'
 import { shade, SPECTRUM } from './spectrum'
 
-/** Foreshorten X so geometric gates read as side-on portals you fly through. */
-const SIDE_SCALE_X = 0.32
-const PORTAL_DEPTH = 34
+/**
+ * Mild foreshortening — keep gates mostly face-on so the hollow matches the
+ * visible art boundary (old 0.32 scale looked like a tiny inner circle).
+ */
+const SIDE_SCALE_X = 0.88
+const PORTAL_DEPTH = 18
 /** Inner hole as fraction of outer shape — clear space in the middle. */
 const HOLE_SCALE = GATE_HOLE_SCALE
 

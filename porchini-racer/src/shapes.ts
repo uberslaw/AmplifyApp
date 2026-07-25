@@ -1,9 +1,9 @@
 import type { GateShape } from './gates'
 
 /** Inner hollow as a fraction of the outer rim — must match portal rendering. */
-export const GATE_HOLE_SCALE = 0.84
-/** Kept for callers; collision now matches GATE_HOLE_SCALE art boundary. */
-export const GATE_CLEAR_SCALE = 0.84
+export const GATE_HOLE_SCALE = 0.86
+/** Clear zone matches the drawn hollow (art opening). */
+export const GATE_CLEAR_SCALE = GATE_HOLE_SCALE
 
 /** Build the geometric outline for a gate opening (local space, centered). */
 export function pathGateShape(
@@ -113,10 +113,12 @@ export function pointInGateOpening(
       return lx * lx + ly * ly <= inner * inner
     }
     case 'arch': {
-      const w = Math.max(14, openHalfW + 20 - pad * 0.45)
-      const h = openHalf
+      // Full arch interior: pillars + semicircle (same outline as pathGateShape)
+      const w = Math.max(16, openHalfW + 20 - pad * 0.35)
+      const h = Math.max(16, openHalf - pad * 0.25)
       if (Math.abs(lx) > w) return false
-      if (ly > h - Math.min(pad, h * 0.2)) return false
+      if (ly > h) return false
+      // Semicircle roof (top half) + rectangular passage below
       if (ly <= 0) return lx * lx + ly * ly <= w * w
       return true
     }

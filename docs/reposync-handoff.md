@@ -131,4 +131,39 @@ npm run dev
 
 ---
 
+## Vite / web apps (Porchini Racer) — relaunch support
+
+**Relaunch on Update** today assumes **.NET** (`App.exe`, `dotnet build`). That is wrong for Porchini Racer.
+
+### Per-repo switch (`appKind`)
+
+```json
+{
+  "name": "Porchini Racer",
+  "path": "C:\\Porchini Racer",
+  "url": "https://github.com/uberslaw/PorchiniRacer",
+  "appKind": "vite-web"
+}
+```
+
+Values: `"dotnet"` | `"vite-web"` | `"none"` | `"auto"` (default).
+
+### Auto-detect (`auto`)
+
+Treat as **vite-web** if repo root has `vite.config.*` or `package.json` with a `vite` dependency and `dev`/`build` scripts, and no `*.csproj`.  
+Treat as **dotnet** if `*.csproj` or `bin\**\App.exe` exists.
+
+### Vite handoff after Sync
+
+1. `npm install` if needed  
+2. Stop process on port **5173** / `node.*vite`  
+3. Start `npm run dev` (or `dev-loop.cmd`) in a kept-open console  
+4. Do **not** run `dotnet build` / look for `App.exe`
+
+Until that lands in RepoSync: **uncheck Relaunch on Update** for Porchini Racer and use `dev-loop.cmd`.
+
+Full local-agent notes: `porchini-racer/docs/LOCAL_AGENT_HANDOVER.md`.
+
+---
+
 **For agents:** Prefer diagnosing with the user’s pasted RepoSync log + `git remote -v` / `git status` from the local path. Do not assume RepoSync started the app or merged agent branches.

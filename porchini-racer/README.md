@@ -15,6 +15,15 @@ npm run dev
 
 Open the URL Vite prints (default `http://localhost:5173`).
 
+### Windows keep-open restart loop
+
+From `C:\Porchini Racer`, double-click **`dev-loop.cmd`** (or run `.\dev-loop.ps1`).
+
+The terminal stays open. Press **Enter** to: stop the server → `git pull` → `npm run dev`.  
+**Ctrl+C** stops the server and returns to the menu (does not close the window).
+
+Check the main-menu stamp (`vX.Y.Z · … UTC`) after a restart + browser **Ctrl+F5**.
+
 ## Menus
 
 - **New Game** — start a run with current settings  

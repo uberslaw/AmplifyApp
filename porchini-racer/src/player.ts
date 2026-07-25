@@ -19,6 +19,7 @@ export type TrailPoint = { x: number; y: number; life: number }
 export class Player {
   x = 160
   y = 0
+  vx = 0
   vy = 0
   tilt = 0
   radius = 36
@@ -40,9 +41,10 @@ export class Player {
     this.radius = 36 * (0.92 + (1 - this.vehicle.hitbox) * 0.08)
   }
 
-  reset(viewH: number): void {
-    this.x = Math.min(180, viewH * 0.22)
+  reset(viewH: number, viewW = 800): void {
+    this.x = Math.min(180, viewW * 0.2)
     this.y = viewH * 0.5
+    this.vx = 0
     this.vy = 0
     this.tilt = 0
     this.boosting = false
@@ -58,18 +60,37 @@ export class Player {
     this.spectrumBoost = Math.max(this.spectrumBoost, seconds)
   }
 
-  update(dt: number, steer: number, boost: boolean, viewH: number): void {
+  /**
+   * @param steerY vertical [-1,1] (neg = up)
+   * @param steerX horizontal [-1,1] (neg = back / left)
+   * @returns horizontal displacement this frame (for gate crossing)
+   */
+  update(
+    dt: number,
+    steerY: number,
+    steerX: number,
+    boost: boolean,
+    viewH: number,
+    viewW: number,
+  ): number {
     this.spectrumBoost = Math.max(0, this.spectrumBoost - dt)
     const rainbow = this.spectrumBoost > 0
     const powered = boost || rainbow
     const handle = this.vehicle.handling
-    const maxSpeed = (powered ? 420 : 320) * (0.9 + handle * 0.1)
+    const maxSpeedY = (powered ? 420 : 320) * (0.9 + handle * 0.1)
+    const maxSpeedX = (powered ? 280 : 220) * (0.9 + handle * 0.1)
     this.boosting = boost
 
-    const target = steer * maxSpeed
-    const responsiveness = (steer === 0 ? 6 : 10) * handle
-    this.vy += (target - this.vy) * Math.min(1, dt * responsiveness)
+    const targetY = steerY * maxSpeedY
+    const targetX = steerX * maxSpeedX
+    const respY = (steerY === 0 ? 6 : 10) * handle
+    const respX = (steerX === 0 ? 7 : 11) * handle
+    this.vy += (targetY - this.vy) * Math.min(1, dt * respY)
+    this.vx += (targetX - this.vx) * Math.min(1, dt * respX)
+
+    const prevX = this.x
     this.y += this.vy * dt
+    this.x += this.vx * dt
 
     const margin = this.radius + 8
     if (this.y < margin) {
@@ -80,8 +101,19 @@ export class Player {
       this.y = viewH - margin
       this.vy = Math.min(0, this.vy)
     }
+    // Stay on-screen horizontally — can move forward/back in the window
+    const minX = margin + 10
+    const maxX = viewW - margin - 24
+    if (this.x < minX) {
+      this.x = minX
+      this.vx = Math.max(0, this.vx)
+    }
+    if (this.x > maxX) {
+      this.x = maxX
+      this.vx = Math.min(0, this.vx)
+    }
 
-    this.tilt += (this.vy * 0.0009 - this.tilt) * Math.min(1, dt * 10)
+    this.tilt += (this.vy * 0.0009 + this.vx * 0.00025 - this.tilt) * Math.min(1, dt * 10)
     this.cameraBob = Math.sin(performance.now() * 0.012) * (powered ? 3.5 : 1.8)
 
     this.spawnFlames(dt, powered, rainbow)
@@ -97,6 +129,8 @@ export class Player {
       p.x -= 220 * dt
       if (p.life <= 0) this.rainbowTrail.splice(i, 1)
     }
+
+    return this.x - prevX
   }
 
   hitbox(): { x: number; y: number; r: number } {

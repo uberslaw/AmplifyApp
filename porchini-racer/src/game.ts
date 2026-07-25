@@ -30,6 +30,7 @@ import { drawRainbowStreamer, Player } from './player'
 import { drawFlash, drawGates, drawPlayer } from './render'
 import { SPECTRUM, SpectrumTracker } from './spectrum'
 import { drawStarfield, makeStarfield, type Starfield } from './starfield'
+import { GAME_BUILD_UTC, GAME_VERSION } from './version'
 
 export type UiScreen =
   | 'main'
@@ -92,6 +93,7 @@ export class Game {
     vehicleList: HTMLElement
     scoresList: HTMLElement
     saveToast: HTMLElement
+    versionLabel: HTMLElement
   }
 
   private ctx: CanvasRenderingContext2D
@@ -135,8 +137,10 @@ export class Game {
       vehicleList: must('#vehicle-list'),
       scoresList: must('#scores-list'),
       saveToast: must('#save-toast'),
+      versionLabel: must('#game-version'),
     }
 
+    this.els.versionLabel.textContent = `v${GAME_VERSION} · ${GAME_BUILD_UTC}`
     this.buildSpectrumHud()
     this.buildOptionLists()
     this.bindMenus()
@@ -150,15 +154,21 @@ export class Game {
     this.h = h
     this.starfield = makeStarfield(w, h)
     if (this.mode === 'menu') {
-      this.player.reset(h)
-      this.player.x = Math.min(200, w * 0.22)
+      this.player.reset(h, w)
       this.player.applyLoadout(this.settings.character, this.settings.vehicle)
     }
   }
 
   update(dt: number): void {
     if (this.mode === 'menu') {
-      this.player.update(dt, Math.sin(performance.now() * 0.0015) * 0.2, true, this.h)
+      this.player.update(
+        dt,
+        Math.sin(performance.now() * 0.0015) * 0.2,
+        0,
+        true,
+        this.h,
+        this.w,
+      )
       this.scroll += 50 * dt
       this.meteors.update(dt * 0.3, this.w, this.h, 80, 0.5)
       this.draw()
@@ -205,8 +215,14 @@ export class Game {
       (spectrumBoost ? 90 : 0) +
       Math.min(80, this.distance / 40)
 
-    this.player.update(dt, this.input.getSteer(), boost, this.h)
-    this.player.x = Math.min(200, this.w * 0.22)
+    const playerDx = this.player.update(
+      dt,
+      this.input.getSteerY(),
+      this.input.getSteerX(),
+      boost,
+      this.h,
+      this.w,
+    )
 
     const scrollDelta = this.scrollSpeed * dt
     this.scroll += scrollDelta
@@ -241,7 +257,7 @@ export class Game {
     }
 
     for (const gate of this.gates.gates) {
-      const result = testGateCrossing(hb, gate, scrollDelta)
+      const result = testGateCrossing(hb, gate, scrollDelta, playerDx)
       if (result.kind === 'clear') {
         gate.cleared = true
         const { isNew, fullSpectrum } = this.spectrum.collect(gate.color)
@@ -329,9 +345,8 @@ export class Game {
     this.scrollSpeed = 220
     this.flash = 0
     this.crashShake = 0
-    this.player.reset(this.h)
+    this.player.reset(this.h, this.w)
     this.player.applyLoadout(this.settings.character, this.settings.vehicle)
-    this.player.x = Math.min(200, this.w * 0.22)
     this.mode = 'playing'
     this.showUi('none')
     this.syncHud()

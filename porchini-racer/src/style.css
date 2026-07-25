@@ -131,6 +131,15 @@ body {
   opacity: 0.7;
 }
 
+.version-label {
+  margin-top: 0.55rem;
+  font-family: var(--font-display);
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  opacity: 0.65;
+  color: #b8c4e0;
+}
+
 .hud {
   position: absolute;
   top: 0;

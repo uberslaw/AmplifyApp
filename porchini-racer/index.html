@@ -30,7 +30,8 @@
             <button type="button" class="menu-btn" data-action="high-scores">High Scores</button>
             <button type="button" class="menu-btn" data-action="exit">Exit Game</button>
           </nav>
-          <p class="hint">↑↓ steer · Space boost · Esc pause / menu</p>
+          <p class="hint">WASD / arrows move · Space boost · Esc pause</p>
+          <p id="game-version" class="version-label">v?</p>
         </div>
 
         <!-- SETTINGS -->
@@ -73,11 +74,12 @@
           <div class="controls-panel">
             <table class="controls-table">
               <tbody>
-                <tr><th>Steer up / down</th><td><kbd>W</kbd> <kbd>S</kbd> or <kbd>↑</kbd> <kbd>↓</kbd></td></tr>
-                <tr><th>Boost</th><td><kbd>Space</kbd> or <kbd>D</kbd> or <kbd>→</kbd></td></tr>
+                <tr><th>Move up / down</th><td><kbd>W</kbd> <kbd>S</kbd> or <kbd>↑</kbd> <kbd>↓</kbd></td></tr>
+                <tr><th>Move forward</th><td><kbd>D</kbd> or <kbd>→</kbd></td></tr>
+                <tr><th>Move back</th><td><kbd>A</kbd> or <kbd>←</kbd></td></tr>
+                <tr><th>Boost</th><td><kbd>Space</kbd> (or hold right side on touch)</td></tr>
                 <tr><th>Pause / menu</th><td><kbd>P</kbd> or <kbd>Esc</kbd></td></tr>
-                <tr><th>Touch steer</th><td>Drag up / down on the screen</td></tr>
-                <tr><th>Touch boost</th><td>Hold the right side of the screen</td></tr>
+                <tr><th>Touch move</th><td>Drag vertically and horizontally</td></tr>
               </tbody>
             </table>
             <p class="controls-tip">

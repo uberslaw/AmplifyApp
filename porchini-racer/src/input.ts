@@ -1,6 +1,8 @@
 export type InputState = {
   up: boolean
   down: boolean
+  left: boolean
+  right: boolean
   boost: boolean
   pausePressed: boolean
   playPressed: boolean
@@ -10,6 +12,8 @@ export class Input {
   readonly state: InputState = {
     up: false,
     down: false,
+    left: false,
+    right: false,
     boost: false,
     pausePressed: false,
     playPressed: false,
@@ -18,7 +22,9 @@ export class Input {
   private keys = new Set<string>()
   private touchY: number | null = null
   private lastTouchY: number | null = null
-  private touchSteer = 0
+  private lastTouchX: number | null = null
+  private touchSteerY = 0
+  private touchSteerX = 0
   private rightBoost = false
   private pauseLatch = false
   private playLatch = false
@@ -45,7 +51,6 @@ export class Input {
     window.removeEventListener('blur', this.reset)
   }
 
-  /** Call once per frame after reading state. */
   endFrame(): void {
     this.state.pausePressed = false
     this.state.playPressed = false
@@ -54,12 +59,23 @@ export class Input {
   }
 
   /** Vertical steer in [-1, 1]; negative = up. */
-  getSteer(): number {
+  getSteerY(): number {
     let steer = 0
     if (this.state.up) steer -= 1
     if (this.state.down) steer += 1
-    if (this.touchSteer !== 0) {
-      steer = Math.max(-1, Math.min(1, this.touchSteer))
+    if (this.touchSteerY !== 0) {
+      steer = Math.max(-1, Math.min(1, this.touchSteerY))
+    }
+    return steer
+  }
+
+  /** Horizontal steer in [-1, 1]; negative = left / back. */
+  getSteerX(): number {
+    let steer = 0
+    if (this.state.left) steer -= 1
+    if (this.state.right) steer += 1
+    if (this.touchSteerX !== 0) {
+      steer = Math.max(-1, Math.min(1, this.touchSteerX))
     }
     return steer
   }
@@ -68,16 +84,20 @@ export class Input {
     this.keys.clear()
     this.touchY = null
     this.lastTouchY = null
-    this.touchSteer = 0
+    this.lastTouchX = null
+    this.touchSteerY = 0
+    this.touchSteerX = 0
     this.rightBoost = false
     this.sync()
   }
 
   private sync(): void {
-    this.state.up = this.keys.has('ArrowUp') || this.keys.has('KeyW') || this.touchSteer < -0.15
-    this.state.down = this.keys.has('ArrowDown') || this.keys.has('KeyS') || this.touchSteer > 0.15
-    this.state.boost =
-      this.keys.has('Space') || this.keys.has('KeyD') || this.keys.has('ArrowRight') || this.rightBoost
+    this.state.up = this.keys.has('ArrowUp') || this.keys.has('KeyW') || this.touchSteerY < -0.15
+    this.state.down = this.keys.has('ArrowDown') || this.keys.has('KeyS') || this.touchSteerY > 0.15
+    this.state.left = this.keys.has('ArrowLeft') || this.keys.has('KeyA') || this.touchSteerX < -0.15
+    this.state.right = this.keys.has('ArrowRight') || this.keys.has('KeyD') || this.touchSteerX > 0.15
+    // Boost is Space only (arrows/WASD are movement)
+    this.state.boost = this.keys.has('Space') || this.rightBoost
   }
 
   private onKeyDown = (e: KeyboardEvent): void => {
@@ -109,7 +129,8 @@ export class Input {
     const x = e.clientX - rect.left
     this.touchY = e.clientY
     this.lastTouchY = e.clientY
-    this.rightBoost = x > rect.width * 0.65
+    this.lastTouchX = e.clientX
+    this.rightBoost = x > rect.width * 0.72
     if (!this.playLatch) {
       this.state.playPressed = true
       this.playLatch = true
@@ -118,27 +139,32 @@ export class Input {
   }
 
   private onPointerMove = (e: PointerEvent): void => {
-    if (this.touchY === null || this.lastTouchY === null) return
+    if (this.lastTouchY === null || this.lastTouchX === null) return
     const dy = e.clientY - this.lastTouchY
+    const dx = e.clientX - this.lastTouchX
     this.lastTouchY = e.clientY
-    this.touchSteer = Math.max(-1, Math.min(1, this.touchSteer + dy * 0.035))
+    this.lastTouchX = e.clientX
+    this.touchSteerY = Math.max(-1, Math.min(1, this.touchSteerY + dy * 0.035))
+    this.touchSteerX = Math.max(-1, Math.min(1, this.touchSteerX + dx * 0.03))
     const rect = this.canvas.getBoundingClientRect()
     const x = e.clientX - rect.left
-    this.rightBoost = x > rect.width * 0.65
+    this.rightBoost = x > rect.width * 0.72
     this.sync()
   }
 
   private onPointerUp = (): void => {
     this.touchY = null
     this.lastTouchY = null
-    this.touchSteer *= 0.3
+    this.lastTouchX = null
+    this.touchSteerY *= 0.3
+    this.touchSteerX *= 0.3
     this.rightBoost = false
     this.playLatch = false
     this.sync()
-    // ease touch steer back
     window.setTimeout(() => {
       if (this.touchY === null) {
-        this.touchSteer = 0
+        this.touchSteerY = 0
+        this.touchSteerX = 0
         this.sync()
       }
     }, 120)

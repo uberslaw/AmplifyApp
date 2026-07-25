@@ -1,11 +1,14 @@
-Art sprites (transparent PNGs):
+Game sprites (transparent PNG — loaded by the game):
 
-  Porcini base image.png   — mushroom rocket (cap = nose right, flames left)
-  Buffalo wing.png         — buffalo chicken wing powerup
+  Porcini base image.png   — mushroom rocket
+  Buffalo wing.png         — buffalo wing powerup
 
-Typical Windows path:
+Source originals (white background — keep for re-export):
 
-  C:\Porchini Racer\Art\
+  source/porchini rocket, white background.jpg
+  source/buffalo chicken wing powerup white background.png
 
-The game serves this folder via Vite. Restart the dev server and Ctrl+F5 after
-replacing art.
+ideas/ is for concept art only (not loaded by the game).
+
+Windows path: C:\Porchini Racer\Art\
+After replacing sprites: restart Vite and Ctrl+F5.

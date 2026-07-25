@@ -1,3 +1,5 @@
+import { getWingImage } from './assets'
+
 /** Buffalo-chicken-wing powerups — tumble through the course once a minute. */
 
 export type WingPickup = {
@@ -138,7 +140,7 @@ export class PowerupManager {
       rot: Math.random() * Math.PI * 2,
       spin: (Math.random() < 0.5 ? -1 : 1) * (3.2 + Math.random() * 4.5),
       phase: Math.random() * Math.PI * 2,
-      r: 22,
+      r: 28,
     }
   }
 }
@@ -158,7 +160,16 @@ export function drawWingPickup(ctx: CanvasRenderingContext2D, wing: WingPickup |
   ctx.arc(0, 0, wing.r * 2.4, 0, Math.PI * 2)
   ctx.fill()
 
-  drawChickenWing(ctx, wing.r)
+  const sprite = getWingImage()
+  if (sprite) {
+    const size = wing.r * 2.6
+    const aspect = sprite.width / Math.max(1, sprite.height)
+    const drawH = size
+    const drawW = drawH * aspect
+    ctx.drawImage(sprite, -drawW * 0.5, -drawH * 0.5, drawW, drawH)
+  } else {
+    drawChickenWing(ctx, wing.r)
+  }
   ctx.restore()
 }
 

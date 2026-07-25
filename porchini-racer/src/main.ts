@@ -1,9 +1,9 @@
-import { loadRocketImage } from './assets'
+import { loadArtImages } from './assets'
 import { Game } from './game'
 import { Input } from './input'
 import './style.css'
 
-loadRocketImage()
+loadArtImages()
 
 const canvasEl = document.querySelector('#game')
 if (!(canvasEl instanceof HTMLCanvasElement)) {

@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <meta name="theme-color" content="#050510" />
+    <title>Porchini Racer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@600;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/src/style.css" />
+  </head>
+  <body>
+    <div id="app">
+      <canvas id="game" aria-label="Porchini Racer game"></canvas>
+      <div id="ui" class="ui">
+        <!-- MAIN MENU -->
+        <div id="menu-main" class="screen menu">
+          <h1 class="brand">Porchini Racer</h1>
+          <p class="tagline">Chase Nyan Cat. Collect the spectrum. Ride the rainbow.</p>
+          <nav class="menu-nav" aria-label="Main menu">
+            <button type="button" class="menu-btn" data-action="new-game">New Game</button>
+            <button type="button" class="menu-btn" data-action="continue" id="btn-continue" disabled>
+              Continue
+            </button>
+            <button type="button" class="menu-btn" data-action="settings">Settings</button>
+            <button type="button" class="menu-btn" data-action="high-scores">High Scores</button>
+            <button type="button" class="menu-btn" data-action="exit">Exit Game</button>
+          </nav>
+          <p class="hint">↑↓ steer · Space boost · Esc pause / menu</p>
+        </div>
+
+        <!-- SETTINGS -->
+        <div id="menu-settings" class="screen menu hidden">
+          <h2 class="menu-title">Settings</h2>
+          <nav class="menu-nav">
+            <button type="button" class="menu-btn" data-action="settings-difficulty">Difficulty</button>
+            <button type="button" class="menu-btn" data-action="settings-character">Character</button>
+            <button type="button" class="menu-btn" data-action="settings-vehicle">Vehicle</button>
+            <button type="button" class="menu-btn secondary" data-action="back-main">Back</button>
+          </nav>
+          <p id="settings-summary" class="menu-summary"></p>
+        </div>
+
+        <!-- DIFFICULTY -->
+        <div id="menu-difficulty" class="screen menu hidden">
+          <h2 class="menu-title">Difficulty</h2>
+          <div id="difficulty-list" class="option-list"></div>
+          <button type="button" class="menu-btn secondary" data-action="back-settings">Back</button>
+        </div>
+
+        <!-- CHARACTER -->
+        <div id="menu-character" class="screen menu hidden">
+          <h2 class="menu-title">Character</h2>
+          <div id="character-list" class="option-list"></div>
+          <button type="button" class="menu-btn secondary" data-action="back-settings">Back</button>
+        </div>
+
+        <!-- VEHICLE -->
+        <div id="menu-vehicle" class="screen menu hidden">
+          <h2 class="menu-title">Vehicle / Rocket</h2>
+          <div id="vehicle-list" class="option-list"></div>
+          <button type="button" class="menu-btn secondary" data-action="back-settings">Back</button>
+        </div>
+
+        <!-- HIGH SCORES -->
+        <div id="menu-scores" class="screen menu hidden">
+          <h2 class="menu-title">High Scores</h2>
+          <ol id="scores-list" class="scores-list"></ol>
+          <button type="button" class="menu-btn secondary" data-action="back-main">Back</button>
+        </div>
+
+        <!-- EXIT -->
+        <div id="menu-exit" class="screen menu hidden">
+          <h2 class="menu-title">Exit Game?</h2>
+          <p class="tagline">Progress is kept in this browser if you saved.</p>
+          <nav class="menu-nav">
+            <button type="button" class="menu-btn" data-action="exit-confirm">Yes, exit</button>
+            <button type="button" class="menu-btn secondary" data-action="back-main">Keep playing</button>
+          </nav>
+        </div>
+
+        <!-- PAUSE -->
+        <div id="menu-pause" class="screen menu hidden">
+          <h2 class="menu-title">Paused</h2>
+          <nav class="menu-nav">
+            <button type="button" class="menu-btn" data-action="resume">Resume</button>
+            <button type="button" class="menu-btn" data-action="save-game">Save Game</button>
+            <button type="button" class="menu-btn" data-action="pause-settings">Settings</button>
+            <button type="button" class="menu-btn secondary" data-action="quit-to-menu">Quit to Menu</button>
+          </nav>
+          <p id="save-toast" class="save-toast hidden">Game saved!</p>
+        </div>
+
+        <!-- HUD -->
+        <div id="hud" class="hud hidden">
+          <div class="hud-top">
+            <span>Score <strong id="score">0</strong></span>
+            <span>Spectra <strong id="spectra">0/3</strong></span>
+            <span>Miss <strong id="misses">0/3</strong></span>
+            <span>Nyan <strong id="nyan-gap">0</strong></span>
+            <span>Best <strong id="best">0</strong></span>
+          </div>
+          <div id="spectrum-row" class="spectrum-row" aria-label="Spectrum collected"></div>
+          <span class="hud-dist">Dist <strong id="distance">0</strong>m</span>
+        </div>
+
+        <div id="nyan-banner" class="banner nyan-banner hidden"></div>
+
+        <!-- GAME OVER / WIN -->
+        <div id="game-over" class="screen menu hidden">
+          <h2 id="over-title" class="over-title">Crashed!</h2>
+          <p class="over-score">Score <strong id="final-score">0</strong></p>
+          <p class="over-best">Best <strong id="final-best">0</strong></p>
+          <nav class="menu-nav">
+            <button type="button" class="menu-btn" data-action="new-game">New Game</button>
+            <button type="button" class="menu-btn" data-action="high-scores">High Scores</button>
+            <button type="button" class="menu-btn secondary" data-action="back-main">Main Menu</button>
+          </nav>
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>

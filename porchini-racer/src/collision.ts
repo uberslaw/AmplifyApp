@@ -1,5 +1,5 @@
 import { gatePulseScale, type Gate } from './gates'
-import { GATE_HOLE_SCALE, pointInGateOpening } from './shapes'
+import { GATE_CLEAR_SCALE, GATE_HOLE_SCALE, pointInGateOpening } from './shapes'
 
 export type CollisionResult =
   | { kind: 'none' }
@@ -30,24 +30,16 @@ export function testGateCrossing(
   if (gate.pattern === 'dual') {
     const topY = gate.y - gate.dualGap * 0.5
     const botY = gate.y + gate.dualGap * 0.5
-    const top = classifyOpening(player, gate, topY, openHalf * 0.72, openHalfW * 0.9)
-    const bot = classifyOpening(player, gate, botY, openHalf * 0.72, openHalfW * 0.9)
+    const top = classifyOpening(player, gate, topY, openHalf * 0.78, openHalfW)
+    const bot = classifyOpening(player, gate, botY, openHalf * 0.78, openHalfW)
     if (top === 'clear' || bot === 'clear') return { kind: 'clear', gate }
     if (top === 'rim' || bot === 'rim') return { kind: 'hit', gate }
-    if (Math.abs(player.y - gate.y) < openHalf + gate.dualGap) {
-      return { kind: 'hit', gate }
-    }
     return { kind: 'miss', gate }
   }
 
   const result = classifyOpening(player, gate, gate.y, openHalf, openHalfW)
   if (result === 'clear') return { kind: 'clear', gate }
   if (result === 'rim') return { kind: 'hit', gate }
-
-  const span = openHalf + gate.frameThick * 2.4
-  if (Math.abs(player.y - gate.y) < span) {
-    return { kind: 'hit', gate }
-  }
   return { kind: 'miss', gate }
 }
 
@@ -65,17 +57,19 @@ function classifyOpening(
   const lx = dx * cos - dy * sin
   const ly = dx * sin + dy * cos
 
-  const inHole = pointInGateOpening(
-    gate.shape,
-    lx,
-    ly,
-    openHalf * GATE_HOLE_SCALE,
-    openHalfW * GATE_HOLE_SCALE,
-    player.r * 0.65,
-  )
+  // Side-scroller forgiveness: mostly care about vertical alignment through the hole
+  const clearHalf = openHalf * GATE_CLEAR_SCALE
+  const clearHalfW = openHalfW * GATE_CLEAR_SCALE
+  // Expand clear zone (negative pad) so the mushroom can fit the visible hole
+  const inHole = pointInGateOpening(gate.shape, lx, ly, clearHalf, clearHalfW, -player.r * 0.15)
   if (inHole) return 'clear'
 
-  const inOuter = pointInGateOpening(gate.shape, lx, ly, openHalf, openHalfW, player.r * 0.35)
+  // Also accept if roughly centered in Y within the visual hole band
+  if (Math.abs(ly) < openHalf * GATE_HOLE_SCALE * 0.95 && Math.abs(lx) < openHalfW + 40) {
+    return 'clear'
+  }
+
+  const inOuter = pointInGateOpening(gate.shape, lx, ly, openHalf * 1.05, openHalfW * 1.05, player.r * 0.15)
   if (inOuter) return 'rim'
   return 'out'
 }

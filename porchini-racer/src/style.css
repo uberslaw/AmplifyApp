@@ -380,6 +380,63 @@ body {
   font-family: var(--font-display);
 }
 
+.controls-panel {
+  width: min(26rem, 92vw);
+  margin: 0.5rem 0 1rem;
+  text-align: left;
+  pointer-events: auto;
+}
+
+.controls-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+  margin-bottom: 0.85rem;
+}
+
+.controls-table th,
+.controls-table td {
+  padding: 0.45rem 0.35rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  vertical-align: middle;
+}
+
+.controls-table th {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-align: left;
+  width: 42%;
+  color: var(--glow);
+}
+
+.controls-table td {
+  opacity: 0.92;
+}
+
+.controls-table kbd {
+  display: inline-block;
+  min-width: 1.4rem;
+  padding: 0.15rem 0.4rem;
+  margin: 0.1rem 0.12rem;
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.12);
+  box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.35);
+  font-family: var(--font-body);
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-align: center;
+}
+
+.controls-tip {
+  font-size: 0.88rem;
+  line-height: 1.4;
+  opacity: 0.85;
+}
+
+.controls-tip strong {
+  color: var(--glow);
+}
+
 @media (max-width: 520px) {
   .hint {
     font-size: 0.75rem;

@@ -1,7 +1,9 @@
 import type { GateShape } from './gates'
 
 /** Inner hollow as a fraction of the outer rim — must match portal rendering. */
-export const GATE_HOLE_SCALE = 0.58
+export const GATE_HOLE_SCALE = 0.72
+/** Collision uses a slightly larger clear zone than the visual hole (forgiveness). */
+export const GATE_CLEAR_SCALE = 0.88
 
 /** Build the geometric outline for a gate opening (local space, centered). */
 export function pathGateShape(
@@ -84,36 +86,37 @@ export function pointInGateOpening(
   openHalfW: number,
   playerR: number,
 ): boolean {
+  // pad > 0 shrinks the opening; pad < 0 expands it (collision forgiveness)
   const pad = playerR * 0.8
   switch (shape) {
     case 'circle': {
-      const r = Math.max(8, Math.max(openHalf, openHalfW) - pad)
+      const r = Math.max(12, Math.max(openHalf, openHalfW) - pad)
       return lx * lx + ly * ly <= r * r
     }
     case 'square': {
-      const s = Math.max(8, Math.max(openHalf, openHalfW) - pad)
+      const s = Math.max(12, Math.max(openHalf, openHalfW) - pad)
       return Math.abs(lx) <= s && Math.abs(ly) <= s
     }
     case 'triangle': {
       const h = openHalf
       const w = openHalfW + 14
-      const scale = Math.max(0.35, 1 - pad / Math.max(h, w))
+      const scale = Math.max(0.45, 1 - pad / Math.max(h, w))
       return pointInTriangle(lx, ly, 0, -h * scale, w * scale, h * scale, -w * scale, h * scale)
     }
     case 'hexagon': {
-      const r = Math.max(8, Math.max(openHalf, openHalfW) - pad)
+      const r = Math.max(12, Math.max(openHalf, openHalfW) - pad)
       return pointInHex(lx, ly, r)
     }
     case 'star': {
-      // Safe portal is the inner disk of the star
-      const inner = Math.max(8, Math.max(openHalf, openHalfW) * 0.4 - pad * 0.5)
+      // Generous inner disk — stars read as a portal, not a tiny bullseye
+      const inner = Math.max(14, Math.max(openHalf, openHalfW) * 0.62 - pad * 0.35)
       return lx * lx + ly * ly <= inner * inner
     }
     case 'arch': {
-      const w = Math.max(10, openHalfW + 20 - pad * 0.65)
+      const w = Math.max(14, openHalfW + 20 - pad * 0.45)
       const h = openHalf
       if (Math.abs(lx) > w) return false
-      if (ly > h - pad) return false
+      if (ly > h - Math.min(pad, h * 0.2)) return false
       if (ly <= 0) return lx * lx + ly * ly <= w * w
       return true
     }

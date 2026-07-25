@@ -37,6 +37,7 @@ export type UiScreen =
   | 'difficulty'
   | 'character'
   | 'vehicle'
+  | 'controls'
   | 'scores'
   | 'exit'
   | 'pause'
@@ -109,6 +110,7 @@ export class Game {
         difficulty: must('#menu-difficulty'),
         character: must('#menu-character'),
         vehicle: must('#menu-vehicle'),
+        controls: must('#menu-controls'),
         scores: must('#menu-scores'),
         exit: must('#menu-exit'),
         pause: must('#menu-pause'),
@@ -254,16 +256,20 @@ export class Game {
         } else {
           this.audio.gateClear()
         }
-      } else if (result.kind === 'hit' || result.kind === 'miss') {
+      } else if (result.kind === 'hit') {
+        // Clipped the rim — counts against you
         gate.missed = true
         this.misses += 1
         this.flash = 0.2
         this.flashColor = 'rgba(255, 80, 60, 0.9)'
         this.audio.crash()
         if (this.misses >= diff.maxMisses) {
-          this.finish('gameover', 'Too many missed gates!')
+          this.finish('gameover', 'Too many clipped gates!')
           break
         }
+      } else if (result.kind === 'miss') {
+        // Flew above/below — no colour, no miss penalty
+        gate.missed = true
       }
     }
 
@@ -480,6 +486,9 @@ export class Game {
         break
       case 'settings-vehicle':
         this.showUi('vehicle')
+        break
+      case 'settings-controls':
+        this.showUi('controls')
         break
       case 'resume':
         this.resume()

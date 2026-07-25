@@ -94,7 +94,7 @@ export class GateManager {
       color = Math.floor(Math.random() * SPECTRUM_COUNT)
     }
 
-    const openHalf = Math.max(36, lerp(78, 44, difficulty) + Math.random() * 16 - difficulty * 8)
+    const openHalf = Math.max(48, lerp(92, 56, difficulty) + Math.random() * 14 - difficulty * 6)
     const openHalfW = sizeForShape(shape, openHalf)
     const baseY = viewH * (0.28 + Math.random() * 0.44)
 

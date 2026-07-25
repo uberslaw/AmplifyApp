@@ -40,6 +40,7 @@
             <button type="button" class="menu-btn" data-action="settings-difficulty">Difficulty</button>
             <button type="button" class="menu-btn" data-action="settings-character">Character</button>
             <button type="button" class="menu-btn" data-action="settings-vehicle">Vehicle</button>
+            <button type="button" class="menu-btn" data-action="settings-controls">Controls</button>
             <button type="button" class="menu-btn secondary" data-action="back-main">Back</button>
           </nav>
           <p id="settings-summary" class="menu-summary"></p>
@@ -63,6 +64,28 @@
         <div id="menu-vehicle" class="screen menu hidden">
           <h2 class="menu-title">Vehicle / Rocket</h2>
           <div id="vehicle-list" class="option-list"></div>
+          <button type="button" class="menu-btn secondary" data-action="back-settings">Back</button>
+        </div>
+
+        <!-- CONTROLS -->
+        <div id="menu-controls" class="screen menu hidden">
+          <h2 class="menu-title">Controls</h2>
+          <div class="controls-panel">
+            <table class="controls-table">
+              <tbody>
+                <tr><th>Steer up / down</th><td><kbd>W</kbd> <kbd>S</kbd> or <kbd>↑</kbd> <kbd>↓</kbd></td></tr>
+                <tr><th>Boost</th><td><kbd>Space</kbd> or <kbd>D</kbd> or <kbd>→</kbd></td></tr>
+                <tr><th>Pause / menu</th><td><kbd>P</kbd> or <kbd>Esc</kbd></td></tr>
+                <tr><th>Touch steer</th><td>Drag up / down on the screen</td></tr>
+                <tr><th>Touch boost</th><td>Hold the right side of the screen</td></tr>
+              </tbody>
+            </table>
+            <p class="controls-tip">
+              Aim for the <strong>hollow middle</strong> of each coloured gate. Clipping the rim costs a
+              miss — flying above or below just skips that colour. Fill all seven colours for a rainbow
+              speed boost, then catch Nyan Cat.
+            </p>
+          </div>
           <button type="button" class="menu-btn secondary" data-action="back-settings">Back</button>
         </div>
 

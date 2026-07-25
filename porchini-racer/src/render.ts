@@ -273,35 +273,34 @@ function sampleShape(
 }
 
 export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player): void {
-  // Flames behind the rocket (drawn in world space first)
-  for (const p of player.flames) {
-    const t = p.life / p.maxLife
-    ctx.fillStyle = `hsla(${p.hue}, 100%, ${55 + t * 25}%, ${Math.max(0, t)})`
-    ctx.beginPath()
-    ctx.ellipse(p.x, p.y, p.size * (1.4 - t * 0.4), p.size * 0.7, 0, 0, Math.PI * 2)
-    ctx.fill()
+  const rocket = getRocketImage()
+  // Art already includes exhaust — only add light particle flames when boosting,
+  // or full particles for the drawn fallback mushroom.
+  const showParticles = !rocket || player.boosting || player.spectrumBoost > 0
+  if (showParticles) {
+    const fade = rocket ? 0.45 : 1
+    for (const p of player.flames) {
+      const t = p.life / p.maxLife
+      ctx.fillStyle = `hsla(${p.hue}, 100%, ${55 + t * 25}%, ${Math.max(0, t) * fade})`
+      ctx.beginPath()
+      ctx.ellipse(p.x, p.y, p.size * (1.4 - t * 0.4), p.size * 0.7, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
   }
 
   ctx.save()
   ctx.translate(player.x, player.y + player.cameraBob)
   ctx.rotate(player.tilt)
 
-  const rocket = getRocketImage()
   if (rocket) {
-    // Art faces along +X (nose right); flames stay on the left / rear
-    const targetH = player.radius * 2.55
+    // Art faces +X (cap = nose right); flame trail is on the left of the PNG.
+    // Anchor on the mushroom body (~84% across), not the image midpoint.
+    const targetH = player.radius * 2.7
     const aspect = rocket.width / Math.max(1, rocket.height)
     const drawH = targetH
     const drawW = drawH * aspect
-    ctx.drawImage(rocket, -drawW * 0.45, -drawH * 0.5, drawW, drawH)
-
-    if (player.boosting || player.spectrumBoost > 0) {
-      ctx.fillStyle =
-        player.spectrumBoost > 0 ? 'rgba(200, 160, 255, 0.45)' : 'rgba(255, 220, 100, 0.4)'
-      ctx.beginPath()
-      ctx.ellipse(-drawW * 0.42, drawH * 0.08, 16, 9, 0, 0, Math.PI * 2)
-      ctx.fill()
-    }
+    const bodyAnchorX = 0.84
+    ctx.drawImage(rocket, -drawW * bodyAnchorX, -drawH * 0.52, drawW, drawH)
   } else {
     drawFallbackMushroom(ctx, player)
   }

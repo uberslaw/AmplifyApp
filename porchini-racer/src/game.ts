@@ -16,6 +16,11 @@ import { Input } from './input'
 import { drawMeteors, MeteorManager } from './meteors'
 import { drawChaseNyan, NyanChase } from './nyan'
 import {
+  drawWingPickup,
+  drawWingShieldAura,
+  PowerupManager,
+} from './powerups'
+import {
   clearSave,
   hasSave,
   loadHighScores,
@@ -58,6 +63,7 @@ export class Game {
   private chase = new NyanChase()
   private spectrum = new SpectrumTracker()
   private meteors = new MeteorManager()
+  private powerups = new PowerupManager()
   private audio = new AudioBus()
   private starfield: Starfield | null = null
   private settings: Settings = loadSettings()
@@ -86,6 +92,7 @@ export class Game {
     misses: HTMLElement
     spectra: HTMLElement
     gap: HTMLElement
+    wingsHud: HTMLElement
     continueBtn: HTMLButtonElement
     settingsSummary: HTMLElement
     difficultyList: HTMLElement
@@ -130,6 +137,7 @@ export class Game {
       misses: must('#misses'),
       spectra: must('#spectra'),
       gap: must('#nyan-gap'),
+      wingsHud: must('#wings-hud'),
       continueBtn: must('#btn-continue') as HTMLButtonElement,
       settingsSummary: must('#settings-summary'),
       difficultyList: must('#difficulty-list'),
@@ -240,6 +248,14 @@ export class Game {
     this.meteors.update(dt, this.w, this.h, this.distance, diff.meteorRate)
 
     const hb = this.player.hitbox()
+    const caughtWing = this.powerups.update(dt, this.scrollSpeed, this.w, this.h, hb)
+    if (caughtWing) {
+      this.score += Math.floor(250 * diff.scoreMult)
+      this.flash = 0.28
+      this.flashColor = 'rgba(255, 140, 40, 0.95)'
+      this.audio.powerup()
+    }
+
     const caught = this.chase.update(
       dt,
       this.scrollSpeed,
@@ -258,10 +274,17 @@ export class Game {
     }
 
     if (this.meteors.hitsPlayer(hb)) {
-      this.finish('gameover', 'Meteor strike!')
-      this.draw()
-      this.input.endFrame()
-      return
+      if (this.powerups.hasShield) {
+        this.flash = 0.12
+        this.flashColor = 'rgba(255, 180, 80, 0.75)'
+        this.audio.shieldBlock()
+        this.meteors.knockAwayFrom(hb.x, hb.y)
+      } else {
+        this.finish('gameover', 'Meteor strike!')
+        this.draw()
+        this.input.endFrame()
+        return
+      }
     }
 
     for (const gate of this.gates.gates) {
@@ -281,15 +304,21 @@ export class Game {
           this.audio.gateClear()
         }
       } else if (result.kind === 'hit') {
-        // Clipped the rim — counts against you
+        // Clipped the rim — wing charges can absorb the miss
         gate.missed = true
-        this.misses += 1
-        this.flash = 0.2
-        this.flashColor = 'rgba(255, 80, 60, 0.9)'
-        this.audio.crash()
-        if (this.misses >= diff.maxMisses) {
-          this.finish('gameover', 'Too many clipped gates!')
-          break
+        if (this.powerups.tryAbsorbMiss()) {
+          this.flash = 0.16
+          this.flashColor = 'rgba(255, 160, 60, 0.85)'
+          this.audio.shieldBlock()
+        } else {
+          this.misses += 1
+          this.flash = 0.2
+          this.flashColor = 'rgba(255, 80, 60, 0.9)'
+          this.audio.crash()
+          if (this.misses >= diff.maxMisses) {
+            this.finish('gameover', 'Too many clipped gates!')
+            break
+          }
         }
       } else if (result.kind === 'miss') {
         // Flew above/below — no colour, no miss penalty
@@ -336,6 +365,7 @@ export class Game {
       this.spectrum.collected = new Set(save.spectrumCollected)
       this.gates.reset(this.w)
       this.meteors.reset()
+      this.powerups.reset()
       this.chase.reset(this.h, diff.nyanCruise, diff.spectraToCatch)
       this.chase.nyan.gap = save.nyanGap
     } else {
@@ -346,6 +376,7 @@ export class Game {
       this.spectrum.reset()
       this.gates.reset(this.w)
       this.meteors.reset()
+      this.powerups.reset()
       this.chase.reset(this.h, diff.nyanCruise, diff.spectraToCatch)
     }
 
@@ -429,8 +460,18 @@ export class Game {
     if (this.mode === 'playing' || this.mode === 'paused' || this.mode === 'gameover' || this.mode === 'won') {
       drawGates(ctx, this.gates.gates)
       drawMeteors(ctx, this.meteors.meteors)
+      drawWingPickup(ctx, this.powerups.wing)
       drawChaseNyan(ctx, this.chase, this.player.x, this.w)
       drawRainbowStreamer(ctx, this.player)
+      if (this.powerups.hasShield) {
+        drawWingShieldAura(
+          ctx,
+          this.player.x,
+          this.player.y + this.player.cameraBob,
+          this.player.radius,
+          this.powerups.buff.shieldTime,
+        )
+      }
       drawPlayer(ctx, this.player)
     } else {
       drawMeteors(ctx, this.meteors.meteors)
@@ -653,16 +694,30 @@ export class Game {
     this.els.score.textContent = String(this.score)
     this.els.distance.textContent = String(Math.floor(this.distance))
     this.els.best.textContent = String(this.best)
-    this.els.misses.textContent = `${this.misses}/${diff.maxMisses}`
+    const bonus = this.powerups.buff.missCharges
+    this.els.misses.textContent =
+      bonus > 0
+        ? `${this.misses}/${diff.maxMisses} (+${bonus})`
+        : `${this.misses}/${diff.maxMisses}`
     this.els.spectra.textContent = `${this.spectrum.cycles}/${diff.spectraToCatch}`
     this.els.gap.textContent = `${Math.floor(this.chase.nyan.gap)}m`
+    const shield = this.powerups.buff.shieldTime
+    const showWings = shield > 0 || bonus > 0 || !!this.powerups.wing
+    this.els.wingsHud.classList.toggle('hidden', !showWings)
+    if (showWings) {
+      if (shield > 0 || bonus > 0) {
+        this.els.wingsHud.textContent = `Wings ${Math.ceil(shield)}s · ${bonus} free miss${bonus === 1 ? '' : 'es'}`
+      } else {
+        this.els.wingsHud.textContent = 'Wings inbound — catch them!'
+      }
+    }
     this.els.spectrumRow.querySelectorAll<HTMLElement>('.spec-dot').forEach((d, i) => {
       d.classList.toggle('on', this.spectrum.has(i))
     })
   }
 
   private syncBanners(): void {
-    const text = this.spectrum.banner ?? this.chase.banner
+    const text = this.powerups.banner ?? this.spectrum.banner ?? this.chase.banner
     this.els.nyanBanner.classList.toggle('hidden', !text)
     if (text) this.els.nyanBanner.textContent = text
   }

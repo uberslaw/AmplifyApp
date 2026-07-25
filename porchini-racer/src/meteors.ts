@@ -52,6 +52,23 @@ export class MeteorManager {
     return false
   }
 
+  /** Bounce nearby meteors off a shielded player so hits don't re-trigger every frame. */
+  knockAwayFrom(x: number, y: number): void {
+    for (const m of this.meteors) {
+      const dx = m.x - x
+      const dy = m.y - y
+      const dist = Math.hypot(dx, dy) || 1
+      if (dist > m.r + 70) continue
+      const nx = dx / dist
+      const ny = dy / dist
+      m.x = x + nx * (m.r + 78)
+      m.y = y + ny * (m.r + 78)
+      m.vx = nx * 320 + (Math.random() - 0.5) * 40
+      m.vy = ny * 280 - 40
+      m.spin += (Math.random() - 0.5) * 6
+    }
+  }
+
   private spawn(viewW: number, viewH: number, difficulty: number): void {
     const fromTop = Math.random() < 0.75
     const r = 8 + Math.random() * (10 + difficulty * 8)

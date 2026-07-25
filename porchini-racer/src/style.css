@@ -190,9 +190,28 @@ body {
   box-shadow: 0 0 10px var(--c, #fff);
 }
 
+.hud-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.4rem 0.85rem;
+}
+
 .hud-dist {
   opacity: 0.75;
   font-size: 0.85em;
+}
+
+.wings-hud {
+  font-size: 0.85em;
+  font-weight: 700;
+  color: #ffb060;
+  text-shadow: 0 0 10px rgba(255, 120, 40, 0.55);
+}
+
+.wings-hud.hidden {
+  display: none;
 }
 
 .banner {

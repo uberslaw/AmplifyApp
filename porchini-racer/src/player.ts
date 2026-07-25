@@ -77,8 +77,9 @@ export class Player {
     const rainbow = this.spectrumBoost > 0
     const powered = boost || rainbow
     const handle = this.vehicle.handling
-    const maxSpeedY = (powered ? 420 : 320) * (0.9 + handle * 0.1)
-    const maxSpeedX = (powered ? 280 : 220) * (0.9 + handle * 0.1)
+    // +50% arrow-key / WASD movement speed
+    const maxSpeedY = (powered ? 420 : 320) * (0.9 + handle * 0.1) * 1.5
+    const maxSpeedX = (powered ? 280 : 220) * (0.9 + handle * 0.1) * 1.5
     this.boosting = boost
 
     const targetY = steerY * maxSpeedY

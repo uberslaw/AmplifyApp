@@ -65,33 +65,18 @@ function drawPortal(
   const backX = depth * 0.5
   const frontX = -depth * 0.5
 
-  // Soft tunnel glow through the hollow (stars visible behind)
-  ctx.save()
-  ctx.scale(SIDE_SCALE_X, 1)
-  const glow = ctx.createRadialGradient(0, 0, 4, 0, 0, openHalf)
-  glow.addColorStop(0, 'rgba(180, 220, 255, 0.14)')
-  glow.addColorStop(0.55, 'rgba(120, 80, 200, 0.06)')
-  glow.addColorStop(1, 'rgba(0, 0, 0, 0)')
-  ctx.fillStyle = glow
-  pathGateShape(ctx, gate.shape, openHalf * HOLE_SCALE, openHalfW * HOLE_SCALE)
-  ctx.fill()
-  ctx.restore()
-
-  // Depth sides (connect back rim → front rim)
+  // Rim depth only (no dark fill in the hole — starfield shows through)
   drawDepthShell(ctx, gate, openHalf, openHalfW, frontX, backX)
 
-  // Back rim (farther along the flight path)
   drawRainbowRim(ctx, gate, openHalf, openHalfW, thick, backX, 0.55)
-
-  // Front rim (near the camera / player approach)
   drawRainbowRim(ctx, gate, openHalf, openHalfW, thick, frontX, 1)
 
-  // Highlight the hollow aperture edge
+  // Soft edge highlight on the hollow — still transparent inside
   ctx.save()
   ctx.translate(frontX, 0)
   ctx.scale(SIDE_SCALE_X, 1)
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)'
-  ctx.lineWidth = 2
+  ctx.strokeStyle = gate.rush ? 'rgba(255, 220, 120, 0.75)' : 'rgba(255, 255, 255, 0.4)'
+  ctx.lineWidth = gate.rush ? 3.5 : 2
   pathGateShape(ctx, gate.shape, openHalf * HOLE_SCALE, openHalfW * HOLE_SCALE)
   ctx.stroke()
   ctx.restore()
@@ -107,34 +92,33 @@ function drawDepthShell(
   frontX: number,
   backX: number,
 ): void {
-  // Sample outline points and connect front→back for a tunnel wall feel
   const outer = sampleShape(gate.shape, openHalf, openHalfW, 28)
   const inner = sampleShape(gate.shape, openHalf * HOLE_SCALE, openHalfW * HOLE_SCALE, 28)
+  const base = SPECTRUM[gate.color % SPECTRUM.length]!.hex
 
-  ctx.fillStyle = 'rgba(20, 12, 40, 0.55)'
-  for (let i = 0; i < outer.length; i++) {
-    const a = outer[i]!
-    const b = outer[(i + 1) % outer.length]!
+  // Only the rim “tube” between outer and inner — hole stays open to the starfield
+  const n = Math.min(outer.length, inner.length)
+  for (let i = 0; i < n; i++) {
+    const o0 = outer[i]!
+    const o1 = outer[(i + 1) % outer.length]!
+    const i0 = inner[i]!
+    const i1 = inner[(i + 1) % inner.length]!
     ctx.beginPath()
-    ctx.moveTo(frontX + a.x * SIDE_SCALE_X, a.y)
-    ctx.lineTo(backX + a.x * SIDE_SCALE_X, a.y)
-    ctx.lineTo(backX + b.x * SIDE_SCALE_X, b.y)
-    ctx.lineTo(frontX + b.x * SIDE_SCALE_X, b.y)
+    ctx.moveTo(frontX + o0.x * SIDE_SCALE_X, o0.y)
+    ctx.lineTo(backX + o0.x * SIDE_SCALE_X, o0.y)
+    ctx.lineTo(backX + o1.x * SIDE_SCALE_X, o1.y)
+    ctx.lineTo(frontX + o1.x * SIDE_SCALE_X, o1.y)
     ctx.closePath()
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.04)'
     ctx.fill()
-  }
 
-  // Darken interior tunnel walls
-  ctx.fillStyle = 'rgba(8, 6, 20, 0.5)'
-  for (let i = 0; i < inner.length; i++) {
-    const a = inner[i]!
-    const b = inner[(i + 1) % inner.length]!
     ctx.beginPath()
-    ctx.moveTo(frontX + a.x * SIDE_SCALE_X, a.y)
-    ctx.lineTo(backX + a.x * SIDE_SCALE_X, a.y)
-    ctx.lineTo(backX + b.x * SIDE_SCALE_X, b.y)
-    ctx.lineTo(frontX + b.x * SIDE_SCALE_X, b.y)
+    ctx.moveTo(frontX + o0.x * SIDE_SCALE_X, o0.y)
+    ctx.lineTo(frontX + i0.x * SIDE_SCALE_X, i0.y)
+    ctx.lineTo(frontX + i1.x * SIDE_SCALE_X, i1.y)
+    ctx.lineTo(frontX + o1.x * SIDE_SCALE_X, o1.y)
     ctx.closePath()
+    ctx.fillStyle = hexAlpha(base, 0.22)
     ctx.fill()
   }
 }
@@ -153,24 +137,25 @@ function drawRainbowRim(
   ctx.scale(SIDE_SCALE_X, 1)
   ctx.globalAlpha = alpha
 
-  // Filled ring (outer minus hole) so the middle is clearly empty
-  ctx.fillStyle = 'rgba(12, 8, 28, 0.75)'
+  // Colour the rim annulus only; hole is punched out (starfield shows through)
+  const base = SPECTRUM[gate.color % SPECTRUM.length]!.hex
+  ctx.fillStyle = hexAlpha(base, 0.28)
   pathGateShape(ctx, gate.shape, openHalf, openHalfW, true)
   pathGateShape(ctx, gate.shape, openHalf * HOLE_SCALE, openHalfW * HOLE_SCALE, false)
   ctx.fill('evenodd')
 
-  // Single spectrum colour per gate (shades of that colour for rim depth)
-  const base = SPECTRUM[gate.color % SPECTRUM.length]!.hex
   const shades = [shade(base, 40), base, shade(base, -35), shade(base, -70)]
   const bands = shades.length
   for (let i = 0; i < bands; i++) {
     const t = i / (bands - 1)
     const scale = 1 - t * (1 - HOLE_SCALE) * 0.92
+    // Don't stroke all the way into the hole — keep last band on the rim
+    if (scale < HOLE_SCALE + 0.02) continue
     const col = shades[i]!
     ctx.strokeStyle = col
     ctx.lineWidth = Math.max(2.4, thick / bands + 1.8)
     ctx.shadowColor = base
-    ctx.shadowBlur = gate.cleared ? 16 : 8
+    ctx.shadowBlur = gate.rush ? 18 : gate.cleared ? 16 : 8
     ctx.globalAlpha = alpha * (gate.pattern === 'dashed' && i % 2 === 1 ? 0.35 : 1)
 
     if (gate.pattern === 'striped') {
@@ -189,6 +174,14 @@ function drawRainbowRim(
   ctx.setLineDash([])
   ctx.shadowBlur = 0
   ctx.restore()
+}
+
+function hexAlpha(hex: string, a: number): string {
+  const n = hex.replace('#', '')
+  const r = parseInt(n.slice(0, 2), 16)
+  const g = parseInt(n.slice(2, 4), 16)
+  const b = parseInt(n.slice(4, 6), 16)
+  return `rgba(${r},${g},${b},${a})`
 }
 
 function sampleShape(

@@ -228,7 +228,15 @@ export class Game {
     this.scroll += scrollDelta
     this.distance += scrollDelta / 10
 
-    this.gates.update(dt, this.scrollSpeed, this.h, this.w, this.distance, diff.gateGapScale)
+    this.gates.update(
+      dt,
+      this.scrollSpeed,
+      this.h,
+      this.w,
+      this.distance,
+      diff.gateGapScale,
+      diff.gateSizeScale,
+    )
     this.meteors.update(dt, this.w, this.h, this.distance, diff.meteorRate)
 
     const hb = this.player.hitbox()

@@ -7,6 +7,8 @@ export type Difficulty = {
   maxMisses: number
   meteorRate: number
   gateGapScale: number
+  /** Multiplier on gate opening size (1.5 = 50% larger — level 1 default). */
+  gateSizeScale: number
   nyanCruise: number
   spectraToCatch: number
   scoreMult: number
@@ -16,10 +18,11 @@ export const DIFFICULTIES: Difficulty[] = [
   {
     id: 'easy',
     name: 'Easy',
-    description: 'Wider gaps, fewer meteors, 4 misses allowed.',
+    description: 'Huge gates, wide spacing, fewer meteors, 4 misses.',
     maxMisses: 4,
-    meteorRate: 0.65,
-    gateGapScale: 1.15,
+    meteorRate: 0.55,
+    gateGapScale: 1.2,
+    gateSizeScale: 1.55,
     nyanCruise: 280,
     spectraToCatch: 2,
     scoreMult: 0.85,
@@ -27,10 +30,11 @@ export const DIFFICULTIES: Difficulty[] = [
   {
     id: 'normal',
     name: 'Normal',
-    description: 'Classic chase. 3 misses. Catch after 3 spectra.',
+    description: 'Level-1 sizing: large gates, triple spacing. 3 misses.',
     maxMisses: 3,
-    meteorRate: 1,
+    meteorRate: 0.85,
     gateGapScale: 1,
+    gateSizeScale: 1.5,
     nyanCruise: 305,
     spectraToCatch: 3,
     scoreMult: 1,
@@ -38,10 +42,11 @@ export const DIFFICULTIES: Difficulty[] = [
   {
     id: 'hard',
     name: 'Hard',
-    description: 'Tight gates, heavy meteor rain, 2 misses.',
+    description: 'Tighter later — still roomy openings. 2 misses.',
     maxMisses: 2,
-    meteorRate: 1.45,
-    gateGapScale: 0.88,
+    meteorRate: 1.25,
+    gateGapScale: 0.92,
+    gateSizeScale: 1.25,
     nyanCruise: 330,
     spectraToCatch: 4,
     scoreMult: 1.35,

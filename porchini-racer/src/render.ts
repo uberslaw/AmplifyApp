@@ -1,3 +1,4 @@
+import { getRocketImage } from './assets'
 import { gatePulseScale, type Gate } from './gates'
 import type { Player } from './player'
 import { GATE_HOLE_SCALE, pathGateShape } from './shapes'
@@ -279,6 +280,7 @@ function sampleShape(
 }
 
 export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player): void {
+  // Flames behind the rocket (drawn in world space first)
   for (const p of player.flames) {
     const t = p.life / p.maxLife
     ctx.fillStyle = `hsla(${p.hue}, 100%, ${55 + t * 25}%, ${Math.max(0, t)})`
@@ -290,6 +292,31 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player): void 
   ctx.save()
   ctx.translate(player.x, player.y + player.cameraBob)
   ctx.rotate(player.tilt)
+
+  const rocket = getRocketImage()
+  if (rocket) {
+    // Art faces along +X (nose right); flames stay on the left / rear
+    const targetH = player.radius * 2.55
+    const aspect = rocket.width / Math.max(1, rocket.height)
+    const drawH = targetH
+    const drawW = drawH * aspect
+    ctx.drawImage(rocket, -drawW * 0.45, -drawH * 0.5, drawW, drawH)
+
+    if (player.boosting || player.spectrumBoost > 0) {
+      ctx.fillStyle =
+        player.spectrumBoost > 0 ? 'rgba(200, 160, 255, 0.45)' : 'rgba(255, 220, 100, 0.4)'
+      ctx.beginPath()
+      ctx.ellipse(-drawW * 0.42, drawH * 0.08, 16, 9, 0, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  } else {
+    drawFallbackMushroom(ctx, player)
+  }
+
+  ctx.restore()
+}
+
+function drawFallbackMushroom(ctx: CanvasRenderingContext2D, player: Player): void {
   const scale = player.radius / 36
   ctx.scale(scale, scale)
 
@@ -299,10 +326,6 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player): void 
   ctx.fillStyle = v.stem
   ctx.beginPath()
   ctx.ellipse(2, 22, 16, 22, 0, 0, Math.PI * 2)
-  ctx.fill()
-  ctx.fillStyle = 'rgba(180, 120, 80, 0.25)'
-  ctx.beginPath()
-  ctx.ellipse(6, 26, 8, 14, 0, 0, Math.PI * 2)
   ctx.fill()
 
   const capGrad = ctx.createRadialGradient(-8, -8, 6, 0, 0, 40)
@@ -316,14 +339,11 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player): void 
   ctx.fill()
 
   ctx.fillStyle = v.spots
-  const spots = [
+  for (const [sx, sy, sr] of [
     [-14, -12, 7],
     [8, -18, 9],
     [18, -6, 5],
-    [-4, -22, 4],
-    [0, -8, 6],
-  ] as const
-  for (const [sx, sy, sr] of spots) {
+  ] as const) {
     ctx.beginPath()
     ctx.ellipse(sx, sy, sr, sr * 0.85, 0, 0, Math.PI * 2)
     ctx.fill()
@@ -341,13 +361,6 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player): void 
   ctx.beginPath()
   ctx.ellipse(10, -22, 7, 3, 0, 0, Math.PI * 2)
   ctx.fill()
-  ctx.strokeStyle = c.suit
-  ctx.lineWidth = 3
-  ctx.lineCap = 'round'
-  ctx.beginPath()
-  ctx.moveTo(8, -8)
-  ctx.quadraticCurveTo(22, -14, 28, -6)
-  ctx.stroke()
 
   if (player.boosting || player.spectrumBoost > 0) {
     ctx.fillStyle =
@@ -356,8 +369,6 @@ export function drawPlayer(ctx: CanvasRenderingContext2D, player: Player): void 
     ctx.ellipse(-22, 14, 14, 8, 0, 0, Math.PI * 2)
     ctx.fill()
   }
-
-  ctx.restore()
 }
 
 function shadeHex(hex: string, amount: number): string {

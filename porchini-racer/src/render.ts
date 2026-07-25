@@ -19,6 +19,9 @@ export function drawGates(ctx: CanvasRenderingContext2D, gates: Gate[]): void {
 }
 
 function drawGate(ctx: CanvasRenderingContext2D, gate: Gate): void {
+  // Cleared gates shatter into particles — don't keep drawing a solid portal
+  if (gate.cleared) return
+
   const pulse = gatePulseScale(gate)
   const openHalf = gate.openHalf * pulse
   const openHalfW = gate.openHalfW * pulse
@@ -33,14 +36,6 @@ function drawGate(ctx: CanvasRenderingContext2D, gate: Gate): void {
     drawPortal(ctx, gate, gate.dualGap * 0.5, openHalf * 0.72, openHalfW, thick)
   } else {
     drawPortal(ctx, gate, 0, openHalf, openHalfW, thick)
-  }
-
-  if (gate.cleared) {
-    ctx.globalAlpha = 0.4
-    ctx.fillStyle = '#ffe08a'
-    ctx.beginPath()
-    ctx.ellipse(0, 0, 10, openHalf * HOLE_SCALE * 0.55, 0, 0, Math.PI * 2)
-    ctx.fill()
   }
 
   ctx.restore()

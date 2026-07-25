@@ -33,6 +33,7 @@ import {
 } from './persist'
 import { drawRainbowStreamer, Player } from './player'
 import { drawFlash, drawGates, drawPlayer } from './render'
+import { drawShatter, ShatterSystem } from './shatter'
 import { SPECTRUM, SpectrumTracker } from './spectrum'
 import { drawStarfield, makeStarfield, type Starfield } from './starfield'
 import { GAME_BUILD_UTC, GAME_VERSION } from './version'
@@ -64,6 +65,7 @@ export class Game {
   private spectrum = new SpectrumTracker()
   private meteors = new MeteorManager()
   private powerups = new PowerupManager()
+  private shatter = new ShatterSystem()
   private audio = new AudioBus()
   private starfield: Starfield | null = null
   private settings: Settings = loadSettings()
@@ -246,6 +248,7 @@ export class Game {
       diff.gateSizeScale,
     )
     this.meteors.update(dt, this.w, this.h, this.distance, diff.meteorRate)
+    this.shatter.update(dt, this.scrollSpeed)
 
     const hb = this.player.hitbox()
     const caughtWing = this.powerups.update(dt, this.scrollSpeed, this.w, this.h, hb)
@@ -291,6 +294,7 @@ export class Game {
       const result = testGateCrossing(hb, gate, scrollDelta, playerDx)
       if (result.kind === 'clear') {
         gate.cleared = true
+        this.shatter.burst(gate)
         const { isNew, fullSpectrum } = this.spectrum.collect(gate.color)
         this.score += Math.floor(
           (gate.points + (isNew ? 50 : 0) + (fullSpectrum ? 500 : 0)) * diff.scoreMult,
@@ -366,6 +370,7 @@ export class Game {
       this.gates.reset(this.w)
       this.meteors.reset()
       this.powerups.reset()
+      this.shatter.reset()
       this.chase.reset(this.h, diff.nyanCruise, diff.spectraToCatch)
       this.chase.nyan.gap = save.nyanGap
     } else {
@@ -377,6 +382,7 @@ export class Game {
       this.gates.reset(this.w)
       this.meteors.reset()
       this.powerups.reset()
+      this.shatter.reset()
       this.chase.reset(this.h, diff.nyanCruise, diff.spectraToCatch)
     }
 
@@ -459,6 +465,7 @@ export class Game {
     drawStarfield(ctx, this.w, this.h, this.starfield, this.scroll, this.player.cameraBob)
     if (this.mode === 'playing' || this.mode === 'paused' || this.mode === 'gameover' || this.mode === 'won') {
       drawGates(ctx, this.gates.gates)
+      drawShatter(ctx, this.shatter.shards)
       drawMeteors(ctx, this.meteors.meteors)
       drawWingPickup(ctx, this.powerups.wing)
       drawChaseNyan(ctx, this.chase, this.player.x, this.w)

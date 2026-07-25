@@ -1,9 +1,9 @@
 import type { GateShape } from './gates'
 
 /** Inner hollow as a fraction of the outer rim — must match portal rendering. */
-export const GATE_HOLE_SCALE = 0.72
-/** Collision uses a slightly larger clear zone than the visual hole (forgiveness). */
-export const GATE_CLEAR_SCALE = 0.88
+export const GATE_HOLE_SCALE = 0.84
+/** Kept for callers; collision now matches GATE_HOLE_SCALE art boundary. */
+export const GATE_CLEAR_SCALE = 0.84
 
 /** Build the geometric outline for a gate opening (local space, centered). */
 export function pathGateShape(

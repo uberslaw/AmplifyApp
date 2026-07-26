@@ -1,59 +1,57 @@
 # Porchini Racer
 
-Side-scrolling space chase: ride a flaming giant mushroom, collect a full rainbow spectrum through single-colour gates to speed up (with a rainbow jet trail), dodge meteors, and catch **Nyan Cat**.
+Side-scrolling space chase: ride a flaming giant mushroom, collect a full rainbow spectrum through single-colour gates, dodge meteors, and catch **Nyan Cat**.
 
-**Repo:** https://github.com/uberslaw/PorchiniRacer
+| | |
+|---|---|
+| **GitHub** | https://github.com/uberslaw/PorchiniRacer |
+| **Local (Windows)** | `C:\Porchini Racer` |
+| **Stack** | Vite + TypeScript + Canvas 2D |
 
-## Play (Mac / Windows / Linux)
+This project is **standalone**. It is not part of CopperHead.
+
+## Play
 
 Needs [Node.js](https://nodejs.org/) 18+:
 
-```bash
+```bat
+cd /d "C:\Porchini Racer"
 npm install
 npm run dev
 ```
 
-Open the URL Vite prints (default `http://localhost:5173`).
+Open the URL Vite prints (default `http://localhost:5173`). Hard-refresh with **Ctrl+F5** after updates. Confirm the menu stamp (`vX.Y.Z · … UTC`).
 
-### Windows keep-open restart loop
+### Windows keep-open loop
 
-From `C:\Porchini Racer`, double-click **`dev-loop.cmd`** (or run `.\dev-loop.ps1`).
+Double-click **`dev-loop.cmd`**. Press **Enter** to stop server → `git pull` → `npm run dev`.
 
-The terminal stays open. Press **Enter** to: stop the server → `git pull` → `npm run dev`.  
-**Ctrl+C** stops the server and returns to the menu (does not close the window).
+## RepoSync
 
-Check the main-menu stamp (`vX.Y.Z · … UTC`) after a restart + browser **Ctrl+F5**.
+- Watch **https://github.com/uberslaw/PorchiniRacer** → folder `C:\Porchini Racer`
+- **Uncheck Relaunch on Update** until Vite handoff exists (this is not a .NET `App.exe`)
+- After Sync: `npm install` (if needed) → `npm run dev` or `dev-loop.cmd`
+
+See `docs/LOCAL_AGENT_HANDOVER.md` and `docs/reposync-vite.md`.
 
 ## Menus
 
-- **New Game** — start a run with current settings  
-- **Continue** — load a saved mid-run (browser `localStorage`)  
-- **Settings** — Difficulty, Character, Vehicle / rocket type  
-- **High Scores** — top runs on this device  
-- **Exit Game** — leave (or thanks screen if the browser blocks tab close)  
-- **Pause (Esc / P)** — Resume, Save Game, Settings, Quit to Menu  
-
-### Vehicles (rockets)
-
-| Vehicle | Feel |
-|---|---|
-| Blaze Cap | Balanced starter |
-| Comet Cap | Faster, snappier |
-| Bunker Cap | Slower, tougher hitbox |
-| Spore Dart | Fastest, unforgiving |
+- **New Game** / **Lab Run (test)** — Lab = god mode + tuning knobs  
+- **Settings** → Difficulty, Character, Vehicle, Controls, **Lab / Tuning**  
+- **High Scores**, **Pause** (Esc / P)
 
 ## Gameplay
 
-- Gates are **one** ROYGBIV colour each.  
-- Fill all seven → **full spectrum** → speed up + **rainbow trail** out the back.  
-- Catch Nyan after enough spectra (depends on difficulty).  
-- Fail on meteor hit or too many missed gates.
+- Single-colour ROYGBIV gates; clear the **art hollow** → shatter  
+- Full spectrum → rainbow trail + speed  
+- Buffalo wing powerups (~every minute)  
+- Lab: god mode, gate/rocket tunables, reaction-time report  
 
 ## Controls
 
 | Input | Action |
 |---|---|
-| `W` / `S` or `↑` / `↓` | Steer |
-| `Space` / `D` | Boost |
+| `W`/`S` or `↑`/`↓` | Up / down |
+| `A`/`D` or `←`/`→` | Back / forward |
+| `Space` | Boost |
 | `P` / `Esc` | Pause |
-| Touch drag / right side | Steer / boost |

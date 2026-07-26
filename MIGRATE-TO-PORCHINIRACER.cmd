@@ -16,7 +16,7 @@ if not exist "%GIT%" set "GIT=git"
 set "GAME=C:\Porchini Racer"
 set "TMP=%USERPROFILE%\PorchiniMigrateTmp"
 REM Filled automatically when this script is published — last commit WITH porchini-racer/
-set "HANDOFF_SHA=c886024ca452b5971de41ebc8672345c98a24fec"
+set "HANDOFF_SHA=9a771c3c1b93b649f0440a6584c00eb1ee0a9313"
 
 if "%HANDOFF_SHA%"=="REPLACE_WITH_SHA" (
   echo ERROR: HANDOFF_SHA not set. Pull the latest CopperHead branch that includes this script.

@@ -8,3 +8,10 @@ publish/
 *.exe
 !**/publish/**/*.exe
 src/HostRouteRefresher/dotnet-sdk-*.exe
+
+# Node / Vite
+node_modules/
+dist/
+*.local
+.DS_Store
+

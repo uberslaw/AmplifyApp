@@ -14,9 +14,12 @@ See [`src/CopperHead/README.md`](src/CopperHead/README.md) for build and usage.
 ## Quick start
 
 ```powershell
-cd C:\Users\today\Cursor\CopperHead\src\CopperHead
+cd src\CopperHead
 dotnet publish -c Release -r win-x64 --self-contained false -o ..\..\publish
 Start-Process ..\..\publish\CopperHead.exe -Verb RunAs
 ```
+
+> **Note:** The Mushroom Blaze / Porchini Racer game was moved to
+> https://github.com/uberslaw/PorchiniRacer
 
 Repository: https://github.com/uberslaw/CopperHead

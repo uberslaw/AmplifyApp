@@ -1,6 +1,7 @@
 import type { Character, Vehicle } from './config'
 import { characterById, vehicleById, type CharacterId, type VehicleId } from './config'
 import { SPECTRUM } from './spectrum'
+import { DEFAULT_TUNABLES, type Tunables } from './tunables'
 
 export type FlameParticle = {
   x: number
@@ -72,14 +73,17 @@ export class Player {
     boost: boolean,
     viewH: number,
     viewW: number,
+    tunables: Tunables = DEFAULT_TUNABLES,
   ): number {
     this.spectrumBoost = Math.max(0, this.spectrumBoost - dt)
     const rainbow = this.spectrumBoost > 0
     const powered = boost || rainbow
-    const handle = this.vehicle.handling
-    // +50% arrow-key / WASD movement speed
-    const maxSpeedY = (powered ? 420 : 320) * (0.9 + handle * 0.1) * 1.5
-    const maxSpeedX = (powered ? 280 : 220) * (0.9 + handle * 0.1) * 1.5
+    const handle = this.vehicle.handling * Math.max(0.2, tunables.handling)
+    // Base +50% movement, then Lab multipliers
+    const maxSpeedY =
+      (powered ? 420 : 320) * (0.9 + handle * 0.1) * 1.5 * Math.max(0.2, tunables.moveSpeedY)
+    const maxSpeedX =
+      (powered ? 280 : 220) * (0.9 + handle * 0.1) * 1.5 * Math.max(0.2, tunables.moveSpeedX)
     this.boosting = boost
 
     const targetY = steerY * maxSpeedY

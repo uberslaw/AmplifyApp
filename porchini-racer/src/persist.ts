@@ -1,6 +1,7 @@
 import type { CharacterId, DifficultyId, VehicleId } from './config'
+import { DEFAULT_TUNABLES, mergeTunables, type Tunables } from './tunables'
 
-const SETTINGS_KEY = 'porchini-settings-v1'
+const SETTINGS_KEY = 'porchini-settings-v2'
 const SAVE_KEY = 'porchini-save-v1'
 const SCORES_KEY = 'porchini-scores-v1'
 
@@ -8,6 +9,7 @@ export type Settings = {
   difficulty: DifficultyId
   character: CharacterId
   vehicle: VehicleId
+  tunables: Tunables
 }
 
 export type SaveGame = {
@@ -37,20 +39,22 @@ export const DEFAULT_SETTINGS: Settings = {
   difficulty: 'normal',
   character: 'pilot',
   vehicle: 'blaze',
+  tunables: { ...DEFAULT_TUNABLES },
 }
 
 export function loadSettings(): Settings {
   try {
-    const raw = localStorage.getItem(SETTINGS_KEY)
-    if (!raw) return { ...DEFAULT_SETTINGS }
-    const parsed = JSON.parse(raw) as Partial<Settings>
+    const raw = localStorage.getItem(SETTINGS_KEY) ?? localStorage.getItem('porchini-settings-v1')
+    if (!raw) return structuredClone(DEFAULT_SETTINGS)
+    const parsed = JSON.parse(raw) as Partial<Settings> & { tunables?: Partial<Tunables> }
     return {
       difficulty: parsed.difficulty ?? 'normal',
       character: parsed.character ?? 'pilot',
       vehicle: parsed.vehicle ?? 'blaze',
+      tunables: mergeTunables(parsed.tunables),
     }
   } catch {
-    return { ...DEFAULT_SETTINGS }
+    return structuredClone(DEFAULT_SETTINGS)
   }
 }
 
@@ -64,6 +68,11 @@ export function loadSave(): SaveGame | null {
     if (!raw) return null
     const s = JSON.parse(raw) as SaveGame
     if (s.version !== 1) return null
+    s.settings = {
+      ...DEFAULT_SETTINGS,
+      ...s.settings,
+      tunables: mergeTunables(s.settings?.tunables),
+    }
     return s
   } catch {
     return null

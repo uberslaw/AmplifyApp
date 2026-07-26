@@ -32,10 +32,17 @@ import {
   type Settings,
 } from './persist'
 import { drawRainbowStreamer, Player } from './player'
+import { ReactionTracker } from './reaction'
 import { drawFlash, drawGates, drawPlayer } from './render'
 import { drawShatter, ShatterSystem } from './shatter'
 import { SPECTRUM, SpectrumTracker } from './spectrum'
 import { drawStarfield, makeStarfield, type Starfield } from './starfield'
+import {
+  clampTunable,
+  DEFAULT_TUNABLES,
+  TUNABLE_FIELDS,
+  type Tunables,
+} from './tunables'
 import { GAME_BUILD_UTC, GAME_VERSION } from './version'
 
 export type UiScreen =
@@ -45,6 +52,8 @@ export type UiScreen =
   | 'character'
   | 'vehicle'
   | 'controls'
+  | 'lab'
+  | 'reaction'
   | 'scores'
   | 'exit'
   | 'pause'
@@ -66,6 +75,7 @@ export class Game {
   private meteors = new MeteorManager()
   private powerups = new PowerupManager()
   private shatter = new ShatterSystem()
+  private reaction = new ReactionTracker()
   private audio = new AudioBus()
   private starfield: Starfield | null = null
   private settings: Settings = loadSettings()
@@ -95,12 +105,15 @@ export class Game {
     spectra: HTMLElement
     gap: HTMLElement
     wingsHud: HTMLElement
+    labHud: HTMLElement
     continueBtn: HTMLButtonElement
     settingsSummary: HTMLElement
     difficultyList: HTMLElement
     characterList: HTMLElement
     vehicleList: HTMLElement
     scoresList: HTMLElement
+    labFields: HTMLElement
+    reactionReport: HTMLElement
     saveToast: HTMLElement
     versionLabel: HTMLElement
   }
@@ -122,6 +135,8 @@ export class Game {
         character: must('#menu-character'),
         vehicle: must('#menu-vehicle'),
         controls: must('#menu-controls'),
+        lab: must('#menu-lab'),
+        reaction: must('#menu-reaction'),
         scores: must('#menu-scores'),
         exit: must('#menu-exit'),
         pause: must('#menu-pause'),
@@ -140,12 +155,15 @@ export class Game {
       spectra: must('#spectra'),
       gap: must('#nyan-gap'),
       wingsHud: must('#wings-hud'),
+      labHud: must('#lab-hud'),
       continueBtn: must('#btn-continue') as HTMLButtonElement,
       settingsSummary: must('#settings-summary'),
       difficultyList: must('#difficulty-list'),
       characterList: must('#character-list'),
       vehicleList: must('#vehicle-list'),
       scoresList: must('#scores-list'),
+      labFields: must('#lab-fields'),
+      reactionReport: must('#reaction-report'),
       saveToast: must('#save-toast'),
       versionLabel: must('#game-version'),
     }
@@ -153,10 +171,15 @@ export class Game {
     this.els.versionLabel.textContent = `v${GAME_VERSION} · ${GAME_BUILD_UTC}`
     this.buildSpectrumHud()
     this.buildOptionLists()
+    this.buildLabFields()
     this.bindMenus()
     this.showUi('main')
     this.syncContinue()
     this.syncSettingsSummary()
+  }
+
+  private tunables(): Tunables {
+    return this.settings.tunables ?? DEFAULT_TUNABLES
   }
 
   resize(w: number, h: number): void {
@@ -214,6 +237,7 @@ export class Game {
     this.spectrum.tick(dt)
     const diff = difficultyById(this.settings.difficulty)
     const veh = vehicleById(this.settings.vehicle)
+    const tune = this.tunables()
     const boost = this.input.state.boost
     const spectrumBoost = this.player.spectrumBoost > 0
 
@@ -232,6 +256,7 @@ export class Game {
       boost,
       this.h,
       this.w,
+      tune,
     )
 
     const scrollDelta = this.scrollSpeed * dt
@@ -246,9 +271,11 @@ export class Game {
       this.distance,
       diff.gateGapScale,
       diff.gateSizeScale,
+      tune,
     )
     this.meteors.update(dt, this.w, this.h, this.distance, diff.meteorRate)
     this.shatter.update(dt, this.scrollSpeed)
+    if (tune.reactionMode) this.reaction.tick(dt, this.gates.gates, this.w)
 
     const hb = this.player.hitbox()
     const caughtWing = this.powerups.update(dt, this.scrollSpeed, this.w, this.h, hb)
@@ -277,7 +304,7 @@ export class Game {
     }
 
     if (this.meteors.hitsPlayer(hb)) {
-      if (this.powerups.hasShield) {
+      if (this.powerups.hasShield || tune.godMode) {
         this.flash = 0.12
         this.flashColor = 'rgba(255, 180, 80, 0.75)'
         this.audio.shieldBlock()
@@ -295,6 +322,7 @@ export class Game {
       if (result.kind === 'clear') {
         gate.cleared = true
         this.shatter.burst(gate)
+        if (tune.reactionMode) this.reaction.record('clear', gate, this.player.y)
         const { isNew, fullSpectrum } = this.spectrum.collect(gate.color)
         this.score += Math.floor(
           (gate.points + (isNew ? 50 : 0) + (fullSpectrum ? 500 : 0)) * diff.scoreMult,
@@ -310,9 +338,14 @@ export class Game {
       } else if (result.kind === 'hit') {
         // Clipped the rim — wing charges can absorb the miss
         gate.missed = true
+        if (tune.reactionMode) this.reaction.record('hit', gate, this.player.y)
         if (this.powerups.tryAbsorbMiss()) {
           this.flash = 0.16
           this.flashColor = 'rgba(255, 160, 60, 0.85)'
+          this.audio.shieldBlock()
+        } else if (tune.godMode) {
+          this.flash = 0.12
+          this.flashColor = 'rgba(255, 160, 60, 0.7)'
           this.audio.shieldBlock()
         } else {
           this.misses += 1
@@ -327,6 +360,7 @@ export class Game {
       } else if (result.kind === 'miss') {
         // Flew above/below — no colour, no miss penalty
         gate.missed = true
+        if (tune.reactionMode) this.reaction.record('miss', gate, this.player.y)
       }
     }
 
@@ -367,10 +401,12 @@ export class Game {
       this.spectrum.cycles = save.spectrumCycles
       this.spectrum.speedBonus = save.spectrumSpeedBonus
       this.spectrum.collected = new Set(save.spectrumCollected)
-      this.gates.reset(this.w)
+      this.settings.tunables = { ...DEFAULT_TUNABLES, ...this.settings.tunables }
+      this.gates.reset(this.w, this.tunables())
       this.meteors.reset()
       this.powerups.reset()
       this.shatter.reset()
+      this.reaction.reset()
       this.chase.reset(this.h, diff.nyanCruise, diff.spectraToCatch)
       this.chase.nyan.gap = save.nyanGap
     } else {
@@ -379,10 +415,11 @@ export class Game {
       this.distance = 0
       this.misses = 0
       this.spectrum.reset()
-      this.gates.reset(this.w)
+      this.gates.reset(this.w, this.tunables())
       this.meteors.reset()
       this.powerups.reset()
       this.shatter.reset()
+      this.reaction.reset()
       this.chase.reset(this.h, diff.nyanCruise, diff.spectraToCatch)
     }
 
@@ -445,7 +482,12 @@ export class Game {
     this.els.overTitle.textContent = reason
     this.els.finalScore.textContent = String(this.score)
     this.els.finalBest.textContent = String(this.best)
-    this.showUi('over')
+    if (this.tunables().reactionMode && this.reaction.samples.length) {
+      this.els.reactionReport.innerHTML = this.reaction.formatSummaryHtml()
+      this.showUi('reaction')
+    } else {
+      this.showUi('over')
+    }
     this.syncContinue()
   }
 
@@ -515,6 +557,12 @@ export class Game {
       case 'new-game':
         this.startNew(false)
         break
+      case 'lab-run':
+        this.settings.tunables.godMode = true
+        saveSettings(this.settings)
+        this.buildLabFields()
+        this.startNew(false)
+        break
       case 'continue':
         if (hasSave()) this.startNew(true)
         break
@@ -560,6 +608,20 @@ export class Game {
         break
       case 'settings-controls':
         this.showUi('controls')
+        break
+      case 'settings-lab':
+        this.buildLabFields()
+        this.showUi('lab')
+        break
+      case 'lab-reset':
+        this.settings.tunables = { ...DEFAULT_TUNABLES }
+        saveSettings(this.settings)
+        this.buildLabFields()
+        this.syncSettingsSummary()
+        break
+      case 'show-reaction':
+        this.els.reactionReport.innerHTML = this.reaction.formatSummaryHtml()
+        this.showUi('reaction')
         break
       case 'resume':
         this.resume()
@@ -662,7 +724,83 @@ export class Game {
     const d = difficultyById(this.settings.difficulty)
     const c = characterById(this.settings.character)
     const v = vehicleById(this.settings.vehicle)
-    this.els.settingsSummary.textContent = `${d.name} · ${c.name} · ${v.name}`
+    const t = this.tunables()
+    const labBits = [
+      t.godMode ? 'God' : null,
+      t.reactionMode ? 'Reaction' : null,
+      t.rushEveryN > 0 ? `Rush/${t.rushEveryN}` : null,
+      t.bounceChance > 0 || t.resizeChance > 0 || t.resizeBounceChance > 0 ? 'Motion' : null,
+    ].filter(Boolean)
+    this.els.settingsSummary.textContent = `${d.name} · ${c.name} · ${v.name}${
+      labBits.length ? ` · Lab: ${labBits.join(', ')}` : ''
+    }`
+  }
+
+  private buildLabFields(): void {
+    const root = this.els.labFields
+    root.innerHTML = ''
+    let lastGroup = ''
+    for (const field of TUNABLE_FIELDS) {
+      if (field.group !== lastGroup) {
+        lastGroup = field.group
+        const h = document.createElement('div')
+        h.className = 'lab-group'
+        h.textContent = field.group
+        root.appendChild(h)
+      }
+      const row = document.createElement('div')
+      row.className = 'lab-row'
+      const label = document.createElement('label')
+      label.textContent = field.label
+      row.appendChild(label)
+
+      const key = field.key
+      const cur = this.settings.tunables[key]
+
+      if (field.kind === 'toggle') {
+        const input = document.createElement('input')
+        input.type = 'checkbox'
+        input.checked = Boolean(cur)
+        input.addEventListener('change', () => {
+          ;(this.settings.tunables[key] as boolean) = input.checked
+          saveSettings(this.settings)
+          this.syncSettingsSummary()
+        })
+        row.appendChild(input)
+      } else {
+        const wrap = document.createElement('div')
+        wrap.style.display = 'flex'
+        wrap.style.alignItems = 'center'
+        wrap.style.gap = '0.35rem'
+        const input = document.createElement('input')
+        input.type = 'range'
+        input.min = String(field.min)
+        input.max = String(field.max)
+        input.step = String(field.step)
+        input.value = String(cur)
+        const val = document.createElement('span')
+        val.className = 'lab-val'
+        val.textContent = formatTune(Number(cur))
+        input.addEventListener('input', () => {
+          const n = clampTunable(key, Number(input.value)) as number
+          ;(this.settings.tunables[key] as number) = n
+          val.textContent = formatTune(n)
+          saveSettings(this.settings)
+          this.syncSettingsSummary()
+        })
+        wrap.appendChild(input)
+        wrap.appendChild(val)
+        row.appendChild(wrap)
+      }
+
+      if (field.hint) {
+        const hint = document.createElement('div')
+        hint.className = 'lab-hint'
+        hint.textContent = field.hint
+        row.appendChild(hint)
+      }
+      root.appendChild(row)
+    }
   }
 
   private syncContinue(): void {
@@ -718,6 +856,16 @@ export class Game {
         this.els.wingsHud.textContent = 'Wings inbound — catch them!'
       }
     }
+    const tune = this.tunables()
+    const labOn = tune.godMode || tune.reactionMode
+    this.els.labHud.classList.toggle('hidden', !labOn)
+    if (labOn) {
+      const bits = [
+        tune.godMode ? 'GOD' : null,
+        tune.reactionMode ? 'REACT' : null,
+      ].filter(Boolean)
+      this.els.labHud.textContent = bits.join(' · ')
+    }
     this.els.spectrumRow.querySelectorAll<HTMLElement>('.spec-dot').forEach((d, i) => {
       d.classList.toggle('on', this.spectrum.has(i))
     })
@@ -734,4 +882,9 @@ function must(sel: string): HTMLElement {
   const el = document.querySelector(sel)
   if (!(el instanceof HTMLElement)) throw new Error(`Missing ${sel}`)
   return el
+}
+
+function formatTune(n: number): string {
+  if (Number.isInteger(n)) return String(n)
+  return n.toFixed(2).replace(/\.?0+$/, '')
 }

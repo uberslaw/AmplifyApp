@@ -23,6 +23,7 @@
           <p class="tagline">Chase Nyan Cat. Collect the spectrum. Ride the rainbow.</p>
           <nav class="menu-nav" aria-label="Main menu">
             <button type="button" class="menu-btn" data-action="new-game">New Game</button>
+            <button type="button" class="menu-btn" data-action="lab-run">Lab Run (test)</button>
             <button type="button" class="menu-btn" data-action="continue" id="btn-continue" disabled>
               Continue
             </button>
@@ -42,9 +43,34 @@
             <button type="button" class="menu-btn" data-action="settings-character">Character</button>
             <button type="button" class="menu-btn" data-action="settings-vehicle">Vehicle</button>
             <button type="button" class="menu-btn" data-action="settings-controls">Controls</button>
+            <button type="button" class="menu-btn" data-action="settings-lab">Lab / Tuning</button>
             <button type="button" class="menu-btn secondary" data-action="back-main">Back</button>
           </nav>
           <p id="settings-summary" class="menu-summary"></p>
+        </div>
+
+        <!-- LAB / TUNING -->
+        <div id="menu-lab" class="screen menu hidden">
+          <h2 class="menu-title">Lab / Tuning</h2>
+          <p class="tagline lab-intro">
+            Fine-grained knobs for testing. God mode = can’t die. Reaction mode logs miss distance.
+          </p>
+          <div id="lab-fields" class="lab-fields"></div>
+          <div class="lab-actions">
+            <button type="button" class="menu-btn" data-action="lab-reset">Reset defaults</button>
+            <button type="button" class="menu-btn" data-action="lab-run">Start Lab Run</button>
+            <button type="button" class="menu-btn secondary" data-action="back-settings">Back</button>
+          </div>
+        </div>
+
+        <!-- REACTION REPORT -->
+        <div id="menu-reaction" class="screen menu hidden">
+          <h2 class="menu-title">Reaction report</h2>
+          <div id="reaction-report" class="reaction-report"></div>
+          <nav class="menu-nav">
+            <button type="button" class="menu-btn" data-action="lab-run">Run again</button>
+            <button type="button" class="menu-btn secondary" data-action="back-main">Main Menu</button>
+          </nav>
         </div>
 
         <!-- DIFFICULTY -->
@@ -117,6 +143,7 @@
             <button type="button" class="menu-btn" data-action="resume">Resume</button>
             <button type="button" class="menu-btn" data-action="save-game">Save Game</button>
             <button type="button" class="menu-btn" data-action="pause-settings">Settings</button>
+            <button type="button" class="menu-btn" data-action="show-reaction">Reaction report</button>
             <button type="button" class="menu-btn secondary" data-action="quit-to-menu">Quit to Menu</button>
           </nav>
           <p id="save-toast" class="save-toast hidden">Game saved!</p>
@@ -134,6 +161,7 @@
           <div id="spectrum-row" class="spectrum-row" aria-label="Spectrum collected"></div>
           <div class="hud-bottom">
             <span class="hud-dist">Dist <strong id="distance">0</strong>m</span>
+            <span id="lab-hud" class="lab-hud hidden">LAB</span>
             <span id="wings-hud" class="wings-hud hidden">Wings</span>
           </div>
         </div>

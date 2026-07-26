@@ -1,14 +1,16 @@
 import { SPECTRUM_COUNT } from './spectrum'
+import { DEFAULT_TUNABLES, type Tunables } from './tunables'
 
 export type GateShape = 'triangle' | 'circle' | 'square' | 'star' | 'arch' | 'hexagon'
 export type GatePattern = 'solid' | 'striped' | 'dashed' | 'dual'
-export type GateMotion = 'static' | 'bob' | 'pulse' | 'rotate' | 'zigzag'
+export type GateMotion = 'static' | 'bob' | 'pulse' | 'rotate' | 'zigzag' | 'bounce' | 'resize' | 'resizeBounce'
 
 export type Gate = {
   id: number
   x: number
   baseY: number
   y: number
+  /** Base opening half-height (before pulse/resize). */
   openHalf: number
   openHalfW: number
   frameThick: number
@@ -23,6 +25,13 @@ export type Gate = {
   dualGap: number
   /** Extra approach speed — rushes at the player. */
   rush: boolean
+  /** World units/sec extra horizontal drift (bounce X). */
+  driftX: number
+  /** Bounce Y amplitude range (absolute px). */
+  bounceMinY: number
+  bounceMaxY: number
+  resizeMin: number
+  resizeMax: number
   cleared: boolean
   missed: boolean
   points: number
@@ -30,22 +39,18 @@ export type Gate = {
 
 const SHAPES: GateShape[] = ['triangle', 'circle', 'square', 'star', 'arch', 'hexagon']
 const PATTERNS: GatePattern[] = ['solid', 'striped', 'dashed', 'dual']
-/** How often a rush gate appears — rolled once per run (1st / 3rd / 5th / 7th). */
-const RUSH_INTERVALS = [1, 3, 5, 7] as const
 
 export class GateManager {
   gates: Gate[] = []
   private nextId = 1
   private colorCursor = 0
   private spawnIndex = 0
-  private rushEvery = 3
 
-  reset(_viewW: number): void {
+  reset(_viewW: number, _tunables: Tunables = DEFAULT_TUNABLES): void {
     this.gates = []
     this.nextId = 1
     this.colorCursor = Math.floor(Math.random() * SPECTRUM_COUNT)
     this.spawnIndex = 0
-    this.rushEvery = RUSH_INTERVALS[Math.floor(Math.random() * RUSH_INTERVALS.length)]!
   }
 
   update(
@@ -56,30 +61,40 @@ export class GateManager {
     distance: number,
     gapScale = 1,
     sizeScale = 1.5,
+    tunables: Tunables = DEFAULT_TUNABLES,
   ): void {
     for (const g of this.gates) {
-      const rush = g.rush ? scrollSpeed * 2.4 + 420 : 0
-      g.x -= (scrollSpeed + rush) * dt
+      const rushExtra =
+        g.rush ? scrollSpeed * Math.max(0, tunables.rushSpeedMult) + 120 : 0
+      g.x -= (scrollSpeed + rushExtra) * dt
+      g.x += g.driftX * dt
       g.phase += dt * g.speed
-      this.applyMotion(g, viewH, distance)
+      this.applyMotion(g, viewH)
     }
 
-    this.gates = this.gates.filter((g) => g.x > -220)
+    this.gates = this.gates.filter((g) => g.x > -220 && g.x < viewW + 800)
 
     const difficulty = Math.min(1, distance / 2500)
-    // Triple base spacing; gapScale from difficulty still applies
-    const gap = (280 - difficulty * 90) * gapScale * 3
+    const spacing = Math.max(0.25, tunables.gateSpacing)
+    const freq = Math.max(0.25, tunables.gateFrequency)
+    const gap = ((280 - difficulty * 90) * gapScale * 3 * spacing) / freq
     const ahead = viewW + 220
     let guard = 0
-    while (guard++ < 10) {
+    while (guard++ < 12) {
       const farthest = this.gates.reduce((m, g) => Math.max(m, g.x), 0)
       if (this.gates.length > 0 && farthest > ahead) break
-      const x = (this.gates.length ? farthest : ahead * 0.7) + gap + Math.random() * 80
-      this.gates.push(this.makeGate(x, viewH, difficulty, sizeScale))
+      const x = (this.gates.length ? farthest : ahead * 0.7) + gap + Math.random() * 60
+      this.gates.push(this.makeGate(x, viewH, difficulty, sizeScale, tunables))
     }
   }
 
-  private makeGate(x: number, viewH: number, difficulty: number, sizeScale: number): Gate {
+  private makeGate(
+    x: number,
+    viewH: number,
+    difficulty: number,
+    sizeScale: number,
+    t: Tunables,
+  ): Gate {
     this.spawnIndex += 1
     const shapePool =
       difficulty < 0.2
@@ -89,9 +104,6 @@ export class GateManager {
           : SHAPES
     const shape = pick(shapePool, difficulty)
     let pattern = pick(PATTERNS, difficulty)
-
-    // No wobble yet — motion patterns saved for later levels
-    const motion: GateMotion = 'static'
 
     if (difficulty < 0.35 && Math.random() < 0.7) pattern = 'solid'
     if (pattern === 'dual' && (shape === 'star' || shape === 'arch' || difficulty < 0.35)) {
@@ -106,12 +118,37 @@ export class GateManager {
       color = Math.floor(Math.random() * SPECTRUM_COUNT)
     }
 
-    // Level 1: ~50% larger openings
+    const rush = t.rushEveryN > 0 && this.spawnIndex % Math.max(1, Math.floor(t.rushEveryN)) === 0
+    const sizeMult = t.gateSize * (rush ? t.rushSizeMult : 1)
     const openHalf =
-      Math.max(48, lerp(92, 56, difficulty) + Math.random() * 14 - difficulty * 6) * sizeScale
+      Math.max(48, lerp(92, 56, difficulty) + Math.random() * 14 - difficulty * 6) *
+      sizeScale *
+      sizeMult
     const openHalfW = sizeForShape(shape, openHalf)
-    const baseY = viewH * (0.28 + Math.random() * 0.44)
-    const rush = this.spawnIndex % this.rushEvery === 0
+
+    const y0 = Math.min(t.bounceYMin, t.bounceYMax)
+    const y1 = Math.max(t.bounceYMin, t.bounceYMax)
+    const bounceMinY = viewH * y0
+    const bounceMaxY = viewH * y1
+    const baseY = bounceMinY + Math.random() * Math.max(8, bounceMaxY - bounceMinY)
+
+    const roll = Math.random()
+    let motion: GateMotion = 'static'
+    if (roll < t.resizeBounceChance) motion = 'resizeBounce'
+    else if (roll < t.resizeBounceChance + t.resizeChance) motion = 'resize'
+    else if (roll < t.resizeBounceChance + t.resizeChance + t.bounceChance) motion = 'bounce'
+
+    const driftX =
+      motion === 'bounce' || motion === 'resizeBounce'
+        ? (Math.random() < 0.5 ? -1 : 1) * t.bounceSpeedX
+        : 0
+
+    const speed =
+      motion === 'resize' || motion === 'resizeBounce'
+        ? t.resizeSpeed * (0.85 + Math.random() * 0.3)
+        : motion === 'bounce'
+          ? t.bounceSpeedY * (0.85 + Math.random() * 0.3)
+          : 1.2 + difficulty * 2.2 + Math.random()
 
     return {
       id: this.nextId++,
@@ -120,16 +157,21 @@ export class GateManager {
       y: baseY,
       openHalf,
       openHalfW,
-      frameThick: (16 + Math.random() * 6) * Math.min(1.25, sizeScale),
+      frameThick: (16 + Math.random() * 6) * Math.min(1.25, sizeScale * t.gateSize),
       shape,
       pattern,
       motion,
       color,
       angle: 0,
       phase: Math.random() * Math.PI * 2,
-      speed: 1.2 + difficulty * 2.2 + Math.random(),
+      speed,
       dualGap: 48 + Math.random() * 30,
       rush,
+      driftX,
+      bounceMinY,
+      bounceMaxY,
+      resizeMin: t.resizeMin,
+      resizeMax: t.resizeMax,
       cleared: false,
       missed: false,
       points:
@@ -141,18 +183,22 @@ export class GateManager {
     }
   }
 
-  private applyMotion(g: Gate, viewH: number, _distance: number): void {
-    // Wobble disabled for now (later levels)
-    if (g.motion === 'static') {
-      g.y = g.baseY
-      g.angle = 0
-      return
-    }
-
-    const amp = Math.min(viewH * 0.18, 70)
+  private applyMotion(g: Gate, viewH: number): void {
     switch (g.motion) {
+      case 'bounce':
+      case 'resizeBounce': {
+        const mid = (g.bounceMinY + g.bounceMaxY) * 0.5
+        const amp = Math.max(8, (g.bounceMaxY - g.bounceMinY) * 0.5)
+        g.y = mid + Math.sin(g.phase) * amp
+        g.angle = 0
+        break
+      }
+      case 'resize':
+        g.y = g.baseY
+        g.angle = 0
+        break
       case 'bob':
-        g.y = g.baseY + Math.sin(g.phase) * amp
+        g.y = g.baseY + Math.sin(g.phase) * Math.min(viewH * 0.18, 70)
         g.angle = 0
         break
       case 'pulse':
@@ -165,7 +211,7 @@ export class GateManager {
           g.shape === 'arch' ? Math.sin(g.phase * 0.5) * 0.15 : Math.sin(g.phase * 0.7) * 0.45
         break
       case 'zigzag':
-        g.y = g.baseY + Math.sin(g.phase * 2.1) * amp * 0.85
+        g.y = g.baseY + Math.sin(g.phase * 2.1) * Math.min(viewH * 0.18, 70) * 0.85
         g.angle = Math.sin(g.phase) * 0.2
         break
       default:
@@ -178,8 +224,14 @@ export class GateManager {
 }
 
 export function gatePulseScale(g: Gate): number {
-  if (g.motion !== 'pulse') return 1
-  return 0.7 + 0.3 * Math.sin(g.phase * 1.4)
+  if (g.motion === 'pulse') return 0.7 + 0.3 * Math.sin(g.phase * 1.4)
+  if (g.motion === 'resize' || g.motion === 'resizeBounce') {
+    const lo = Math.min(g.resizeMin, g.resizeMax)
+    const hi = Math.max(g.resizeMin, g.resizeMax)
+    const u = 0.5 + 0.5 * Math.sin(g.phase)
+    return lo + (hi - lo) * u
+  }
+  return 1
 }
 
 function sizeForShape(shape: GateShape, openHalf: number): number {
